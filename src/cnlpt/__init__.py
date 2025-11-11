@@ -1,4 +1,5 @@
-import nltk as _nltk
+"""Transformers for Clinical NLP"""
 
-_nltk.download("punkt", quiet=True)
-del _nltk
+from importlib.metadata import version
+
+__version__ = version("cnlp_transformers")
