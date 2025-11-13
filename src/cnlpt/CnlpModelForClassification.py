@@ -193,7 +193,7 @@ class CnlpModelForClassification(PreTrainedModel):
         config.encoder_config = encoder_config.to_dict()
         encoder_model = AutoModel.from_config(encoder_config)
         self.encoder = encoder_model.from_pretrained(config.encoder_name)
-        self.encoder.resize_token_embeddings(encoder_config.vocab_size)
+        self.encoder.resize_token_embeddings(encoder_config.vocab_size, mean_resizing=False)
 
         if config.layer > len(encoder_model.encoder.layer):
             raise ValueError('The layer specified (%d) is too big for the specified encoder which has %d layers' % (
