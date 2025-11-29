@@ -25,6 +25,7 @@ import tempfile
 import math
 
 
+from collections import defaultdict
 import numpy as np
 from seqeval.metrics.sequence_labeling import get_entities
 
@@ -72,7 +73,6 @@ cnlpt_models = ["cnn", "lstm", "hier", "cnlpt"]
 
 logger = logging.getLogger(__name__)
 
-from collections import defaultdict
 
 eval_state = defaultdict(lambda: -1)
 
@@ -564,7 +564,6 @@ def main(json_file=None, json_obj=None):
     # The .from_pretrained methods guarantee that only one local process can concurrently
     # download model & vocab.
 
-
     if model_name == "cnn":
         model = CnnSentenceClassifier(
             len(tokenizer),
@@ -593,7 +592,6 @@ def main(json_file=None, json_obj=None):
         #     model_args.config_name if model_args.config_name else model_args.encoder_name,
         #     finetuning_task=data_args.task_name,
         # )
-
 
         encoder_name = (
             model_args.config_name
@@ -1058,7 +1056,8 @@ def main(json_file=None, json_obj=None):
 
         try:
             eval_result = model.best_eval_results
-        except:
+        except Exception as e:
+            logger.error(f"{e} - re-evaluating")
             eval_result = trainer.evaluate(eval_dataset=eval_dataset)
 
         if trainer.is_world_process_zero():

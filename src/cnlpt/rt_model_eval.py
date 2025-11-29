@@ -18,7 +18,6 @@ from .pipelines.tagging import TaggingPipeline
 from .pipelines.classification import ClassificationPipeline
 
 
-
 from .CnlpModelForClassification import CnlpModelForClassification, CnlpConfig
 
 from .formatting import tabulate_report
@@ -202,7 +201,7 @@ def main():
     else:
         (rt_eval_args,) = parser.parse_args_into_dataclasses()
 
-    model_eval(eval_args)
+    model_eval(rt_eval_args)
 
 
 def model_eval(eval_args):
@@ -312,8 +311,8 @@ def model_eval(eval_args):
                 report = cnlp_compute_metrics(
                     eval_args.task_name,
                     [
-                        [label_map[l] for l in p]
-                        for p in chain.from_iterable(predictions)
+                        [label_map[label] for label in prediction]
+                        for prediction in chain.from_iterable(predictions)
                     ],
                     labels,
                 )

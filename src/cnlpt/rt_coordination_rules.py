@@ -37,7 +37,7 @@ def admit_rel(label, src_dose, trg_dose):
     try:
         sig_span = [*filter(lambda s: s != src_dose, label[:2])][0]
     except Exception as e:
-        print(f"{e} with {label} {src_doce} {trg_dose}")
+        print(f"{e} with {label} {src_dose} {trg_dose}")
         return None
     _, _, sent_dict = label
     new_sent_dict = sent_dict.copy()

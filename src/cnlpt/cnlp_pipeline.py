@@ -295,7 +295,6 @@ def evaluation(pipeline_args):
         else [pipeline_args.in_file]
     )
 
-
     ordered_metrics = {}
 
     total_labels = []
@@ -380,7 +379,7 @@ def evaluation(pipeline_args):
               (idx_1, idx_2, label_string)
             """
             first, second, label_idx = label_tuple
-            return f, s, inv_label_map[l]
+            return first, second, inv_label_map[label_idx]
 
         paragraph_label_tuples = get_predictions(
             pipeline_args.out_dir,
