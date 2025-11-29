@@ -233,7 +233,7 @@ class ClassificationPipeline(Pipeline):
 
         outputs = model_outputs["logits"][0]
         outputs = outputs.numpy()
-        
+
         if function_to_apply == ClassificationFunction.SIGMOID:
             scores = sigmoid(outputs)
         elif function_to_apply == ClassificationFunction.SOFTMAX:

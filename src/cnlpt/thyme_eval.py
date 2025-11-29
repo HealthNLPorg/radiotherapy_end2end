@@ -2,6 +2,7 @@
 Module used for evaluating a model on THYME data.
 Not currently documented for public use.
 """
+
 import os
 import sys
 import re
@@ -11,7 +12,6 @@ import logging
 import anafora
 from anafora import AnaforaData, AnaforaEntity, AnaforaRelation
 import requests
-from .api.temporal_rest import TokenizedSentenceDocument
 
 # sentence and token splitters:
 from PyRuSH import RuSH
@@ -27,7 +27,7 @@ def main(args):
     """
 
     Args:
-      args: 
+      args:
 
     Returns:
 
@@ -189,12 +189,13 @@ def main(args):
                         tokens = raw_tokens
                 else:
                     tokens = tokenize(sent_txt)
+
                     # fix apostrophe s ('s) to be one token
                     def fix_simple_tokenize(tokens):
                         """
 
                         Args:
-                          tokens: 
+                          tokens:
 
                         Returns:
 
@@ -350,7 +351,7 @@ def main(args):
                         timex_ids.append(-1)
                     elif time_class == "SECTIONTIME":
                         timex_ids.append(-1)
-                    elif not re.match(r"\d{5}", timex_text) is None:
+                    elif re.match(r"\d{5}", timex_text) is not None:
                         timex_ids.append(-1)
                     else:
                         # create anafora entry
@@ -365,7 +366,7 @@ def main(args):
 
                     # print("Found timex %s" % (timex_text))
 
-            if not "path" in text_name.lower():
+            if "path" not in text_name.lower():
                 # no relations in pathology notes, so if we find any they are false positives.
                 for rel in sent_rels:
                     if given_entities:
@@ -396,7 +397,7 @@ def main(args):
                                 if arg2_offset >= span[0] and arg2_offset <= span[1]:
                                     arg2 = timex
 
-                        if not arg1 is None and not arg2 is None:
+                        if arg1 is not None and arg2 is not None:
                             reln = AnaforaRelation()
                             reln.id = str(rel_id) + "@r@" + text_name
                             rel_id += 1

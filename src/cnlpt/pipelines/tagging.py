@@ -1,6 +1,5 @@
 import types
 from typing import List, Optional, Union
-from itertools import groupby
 
 import numpy as np
 
@@ -21,7 +20,6 @@ class TaggingArgumentHandler(ArgumentHandler):
     """Handles arguments for token classification."""
 
     def __call__(self, inputs: Union[str, List[str]], **kwargs):
-
         if inputs is not None and isinstance(inputs, (list, tuple)) and len(inputs) > 0:
             inputs = list(inputs)
         elif isinstance(inputs, str):

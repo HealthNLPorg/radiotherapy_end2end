@@ -1,6 +1,7 @@
 """
 Module containing the Hierarchical Transformer module, adapted from Xin Su.
 """
+
 import logging
 import copy
 import random
@@ -36,7 +37,7 @@ def set_seed(seed, n_gpu):
 
 class MultiHeadAttention(nn.Module):
     """Multi-Head Attention module
-    
+
     Original author: Yu-Hsiang Huang (https://github.com/jadore801120/attention-is-all-you-need-pytorch)
 
     Args:
@@ -70,9 +71,9 @@ class MultiHeadAttention(nn.Module):
         """
 
         Args:
-          q: 
-          k: 
-          v: 
+          q:
+          k:
+          v:
           mask:  (Default value = None)
 
         Returns:
@@ -109,7 +110,7 @@ class MultiHeadAttention(nn.Module):
 
 class PositionwiseFeedForward(nn.Module):
     """A two-feed-forward-layer module
-    
+
     Original author: Yu-Hsiang Huang (https://github.com/jadore801120/attention-is-all-you-need-pytorch)
 
     Args:
@@ -132,7 +133,7 @@ class PositionwiseFeedForward(nn.Module):
         """
 
         Args:
-          x: 
+          x:
 
         Returns:
 
@@ -149,7 +150,7 @@ class PositionwiseFeedForward(nn.Module):
 
 class ScaledDotProductAttention(nn.Module):
     """Scaled Dot-Product Attention
-    
+
     Original author: Yu-Hsiang Huang (https://github.com/jadore801120/attention-is-all-you-need-pytorch)
 
     Args:
@@ -171,9 +172,9 @@ class ScaledDotProductAttention(nn.Module):
         """
 
         Args:
-          q: 
-          k: 
-          v: 
+          q:
+          k:
+          v:
           mask:  (Default value = None)
 
         Returns:
@@ -192,7 +193,7 @@ class ScaledDotProductAttention(nn.Module):
 
 class EncoderLayer(nn.Module):
     """Compose with two layers
-    
+
     Original author: Yu-Hsiang Huang (https://github.com/jadore801120/attention-is-all-you-need-pytorch)
 
     Args:
@@ -217,7 +218,7 @@ class EncoderLayer(nn.Module):
         """
 
         Args:
-          enc_input: 
+          enc_input:
           slf_attn_mask:  (Default value = None)
 
         Returns:
@@ -232,7 +233,7 @@ class EncoderLayer(nn.Module):
 
 class HierarchicalTransformerConfig(object):
     """Config object for hierarchical transformer's document-level encoder layers
-    
+
     Original author: Xin Su (https://github.com/xinsu626/DocTransformer)
 
     Args:
@@ -261,16 +262,16 @@ class HierarchicalTransformerConfig(object):
 
 class HierarchicalModel(CnlpModelForClassification):
     """Hierarchical Transformer model (https://arxiv.org/abs/2105.06752)
-    
+
     Adapted from Xin Su's implementation (https://github.com/xinsu626/DocTransformer)
 
     Args:
-      config: 
-      transformer_head_config: 
-      class_weights: 
-      final_task_weight: 
-      argument_regularization: 
-      freeze: 
+      config:
+      transformer_head_config:
+      class_weights:
+      final_task_weight:
+      argument_regularization:
+      freeze:
 
     Returns:
 

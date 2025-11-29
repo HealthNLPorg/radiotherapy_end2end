@@ -21,7 +21,6 @@ from .CnlpModelForClassification import CnlpModelForClassification
 
 from .text_engineering import get_chunks, get_date_links, get_intersect, noncr_2_cr_inds
 from .rt_coordination_rules import filter_and_extrapolate_labels
-from .date_fsm import get_dates
 
 from transformers import AutoConfig, AutoTokenizer
 
@@ -81,7 +80,6 @@ def model_dicts(models_dir):
         model_dir = os.path.join(models_dir, file)
         task_name = str(file)
         if os.path.isdir(model_dir) and task_name in cnlp_processors.keys():
-
             # Load the model, model config, and model tokenizer
             # from the model foldner
             config = AutoConfig.from_pretrained(
@@ -317,7 +315,7 @@ def get_chunk_dose_indices(chunk_indices, chunk, taggers_dict, axis_task):
     if filtered_chunk is None:
         return []
     chunk_ann = dose_model(filtered_chunk)
-    
+
     raw_dose_chunk_indices = process_ann(chunk_ann)
 
     dose_chunk_indices = [
@@ -614,7 +612,7 @@ def get_sentences_and_labels(in_file: str, mode: str, task_names):
         # 'dev' lets us get labels without running into issues of downsampling
         lines = task_processors[0]._read_tsv(in_file)
         examples = task_processors[0]._create_examples(lines, "dev")
-        
+
         def example2label(example):
             """
 
@@ -624,6 +622,7 @@ def get_sentences_and_labels(in_file: str, mode: str, task_names):
             Returns:
               Label data formatted for scoring
             """
+
             # Just assumed relex
             def conv_tuple(l_tuple):
                 """
@@ -699,11 +698,11 @@ def classify_casoid_annotations(casoid, out_model_dict):
                 for out_task, out_model in out_model_dict.items():
                     filtered_window, _ = noncr_2_cr_inds(sent_dict["ann_window"])
                     model_output = out_model(
-                            filtered_window,
-                            padding="max_length",
-                            truncation=True,
-                            is_split_into_words=True,
-                        )
+                        filtered_window,
+                        padding="max_length",
+                        truncation=True,
+                        is_split_into_words=True,
+                    )
                     # For the dose/attr pair
                     # pick the label with the strongest signal
                     strongest_label_dict = max(

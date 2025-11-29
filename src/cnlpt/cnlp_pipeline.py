@@ -57,7 +57,11 @@ class PipelineArguments:
     )
     in_dir: Optional[str] = field(
         default=None,
-        metadata={"help": ("Use this argument when running the pipeline over a folder with mutliple files.")},
+        metadata={
+            "help": (
+                "Use this argument when running the pipeline over a folder with mutliple files."
+            )
+        },
     )
     out_dir: Optional[str] = field(
         default="cnlpt_predictions",
@@ -87,15 +91,17 @@ class PipelineArguments:
     )
     batch_size: int = field(
         default=1,
-        metadata={"help": ("Batch size for pipeline batching (where batching helps, possibly for larger datasets)")},
+        metadata={
+            "help": (
+                "Batch size for pipeline batching (where batching helps, possibly for larger datasets)"
+            )
+        },
     )
 
 
-    
-
 def labels_to_matrix(labels, dim):
     """
-    List of tuples describing values at cells of a matrix 
+    List of tuples describing values at cells of a matrix
     to the matrix they describe
 
     Args:
@@ -115,8 +121,8 @@ def labels_to_matrix(labels, dim):
 
 def fix_gold_labels(labels, inv_map):
     """
-    Rearranges the scoring matrix to prevent 
-    any collisions of DOSE-BOOST and DOSE-SITE 
+    Rearranges the scoring matrix to prevent
+    any collisions of DOSE-BOOST and DOSE-SITE
     (the only types of relations where this is possible)
     while retaining accurate scoring
 
@@ -192,7 +198,7 @@ def main():
         (pipeline_args,) = parser.parse_args_into_dataclasses()
 
     print("main entered")
-        
+
     if pipeline_args.mode == "inf":
         inference(pipeline_args)
     elif pipeline_args.mode == "eval":
@@ -238,7 +244,7 @@ def inference(pipeline_args):
             mode="inf",
             task_names=out_model_dict.keys(),
         )
-        paragraph_label_tuples = get_predictions(
+        get_predictions(
             pipeline_args.out_dir,
             in_file,
             sentences,
@@ -266,7 +272,7 @@ def evaluation(pipeline_args):
     taggers_dict, out_model_dict = model_dicts(pipeline_args.models_dir)
 
     print("models loaded")
-    
+
     task_processor = cnlp_processors[classifier_to_relex[[*out_model_dict.keys()][0]]]()
     label_list = task_processor.get_labels()
     actual_labels = set()
@@ -289,7 +295,6 @@ def evaluation(pipeline_args):
         else [pipeline_args.in_file]
     )
 
-    corpus_max_sent_len = -1
 
     ordered_metrics = {}
 
@@ -439,7 +444,6 @@ def evaluation(pipeline_args):
 
     if dir_mode:
         for out_task in out_model_dict:
-
             report = cnlp_compute_metrics(
                 classifier_to_relex[out_task],
                 np.hstack(total_preds),
@@ -473,10 +477,10 @@ def evaluation(pipeline_args):
             )
 
             report_str = tabulate_report(report)
-            print(f"FINAL -- SPLIT LEVEL INSTANCE AVERAGED RESULTS\n\n")
+            print("FINAL -- SPLIT LEVEL INSTANCE AVERAGED RESULTS\n\n")
 
             print(report_str)
-            print(f"\n\nFINAL -- SPLIT LEVEL DOCUMENT AVERAGED RESULTS\n\n")
+            print("\n\nFINAL -- SPLIT LEVEL DOCUMENT AVERAGED RESULTS\n\n")
 
             print(document_report_table)
 

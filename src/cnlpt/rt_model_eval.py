@@ -1,36 +1,22 @@
 import os
-import re
 import torch
-import warnings
 import sys
-import numpy as np
-import shutil
 
 from typing import Optional
 from dataclasses import dataclass, field
 
-from typing import Optional
-from dataclasses import dataclass, field
 
 from .cnlp_processors import (
     cnlp_processors,
     cnlp_output_modes,
     tagging,
     classification,
-    classifier_to_relex,
     cnlp_compute_metrics,
-    axis_tags,
-    signature_tags,
 )
 
 from .pipelines.tagging import TaggingPipeline
 from .pipelines.classification import ClassificationPipeline
-from .pipelines import ctakes_tok
 
-from .cnlp_pipeline_utils import (
-    model_dicts,
-    get_predictions,
-)
 
 
 from .CnlpModelForClassification import CnlpModelForClassification, CnlpConfig
@@ -81,27 +67,41 @@ class RTEvalArguments:
     """ """
 
     model_dir: str = field(
-        metadata={"help": ("Folder containing the trained model to be evaluated (with pytorch_model.bin etc).")}
+        metadata={
+            "help": (
+                "Folder containing the trained model to be evaluated (with pytorch_model.bin etc)."
+            )
+        }
     )
     in_dir: Optional[str] = field(
         default=None,
-        metadata={"help": ("Directory containing tsv files on which to evaluate the provided model.")},
+        metadata={
+            "help": (
+                "Directory containing tsv files on which to evaluate the provided model."
+            )
+        },
     )
-    # rt_rel 
-    # rt_boost 
-    # rt_date 
-    # rt_dose 
-    # rt_fxfreq 
-    # rt_fxno 
+    # rt_rel
+    # rt_boost
+    # rt_date
+    # rt_dose
+    # rt_fxfreq
+    # rt_fxno
     # rt_site
     task_name: str = field(
         metadata={
-            "help": ("Shorthand task name from cnlp_processors.py describing format of the data on which to evaluate the model (see above comment in code for list)")
+            "help": (
+                "Shorthand task name from cnlp_processors.py describing format of the data on which to evaluate the model (see above comment in code for list)"
+            )
         },
     )
     batch_size: int = field(
         default=1,
-        metadata={"help": ("Batch size for pipeline batching (where batching helps, possibly for larger datasets)")},
+        metadata={
+            "help": (
+                "Batch size for pipeline batching (where batching helps, possibly for larger datasets)"
+            )
+        },
     )
 
 
@@ -120,7 +120,7 @@ def get_model(model_dir, task_name):
         ValueError(f"Invalid task: {task_name}")
     main_device = 0 if torch.cuda.is_available() else -1
 
-3    config = AutoConfig.from_pretrained(
+    config = AutoConfig.from_pretrained(
         model_dir,
     )
 
@@ -270,7 +270,6 @@ def model_eval(eval_args):
         print(f"\n\n{file_idx}.  {note_identifier}\n\n")
 
         if any(labels_in_doc):
-
             if mode == classification:
                 predictions = pipeline(
                     sentences,
@@ -354,7 +353,7 @@ def model_eval(eval_args):
             ],
             headers=document_headers,
         )
-        print(f"\n\nFINAL -- SPLIT LEVEL DOCUMENT AVERAGED RESULTS\n\n")
+        print("\n\nFINAL -- SPLIT LEVEL DOCUMENT AVERAGED RESULTS\n\n")
 
         print(document_report_table)
     elif mode == tagging:
@@ -375,7 +374,7 @@ def model_eval(eval_args):
             headers=document_headers,
         )
 
-        print(f"\n\nFINAL -- SPLIT LEVEL DOCUMENT AVERAGED RESULTS\n\n")
+        print("\n\nFINAL -- SPLIT LEVEL DOCUMENT AVERAGED RESULTS\n\n")
 
         print(document_report_table)
 

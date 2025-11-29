@@ -5,6 +5,7 @@ import torch.nn.functional as F
 
 class CnnSentenceClassifier(nn.Module):
     """ """
+
     def __init__(
         self,
         vocab_size,
@@ -42,7 +43,7 @@ class CnnSentenceClassifier(nn.Module):
           input_ids:  (Default value = None)
           event_tokens:  (Default value = None)
           labels:  (Default value = None)
-          **kwargs: 
+          **kwargs:
 
         Returns:
 
@@ -62,7 +63,7 @@ class CnnSentenceClassifier(nn.Module):
             task_logits = task_fc(fc_in)
             logits.append(task_logits)
 
-            if not labels is None:
+            if labels is not None:
                 if labels.ndim == 2:
                     task_labels = labels[:, 0]
                 elif labels.ndim == 3:
@@ -76,6 +77,7 @@ class CnnSentenceClassifier(nn.Module):
 
 class LstmSentenceClassifier(nn.Module):
     """ """
+
     def __init__(
         self,
         vocab_size,
@@ -112,7 +114,7 @@ class LstmSentenceClassifier(nn.Module):
           input_ids:  (Default value = None)
           event_tokens:  (Default value = None)
           labels:  (Default value = None)
-          **kwargs: 
+          **kwargs:
 
         Returns:
 
@@ -128,7 +130,7 @@ class LstmSentenceClassifier(nn.Module):
             task_logits = task_fc(features)
             logits.append(task_logits)
 
-            if not labels is None:
+            if labels is not None:
                 if labels.ndim == 2:
                     task_labels = labels[:, 0]
                 elif labels.ndim == 3:

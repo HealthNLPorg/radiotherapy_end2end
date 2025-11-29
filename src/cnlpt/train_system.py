@@ -13,28 +13,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" Finetuning the library models for sequence classification on clinical NLP tasks"""
+"""Finetuning the library models for sequence classification on clinical NLP tasks"""
 
-
-import dataclasses
 import logging
 import os
-from os.path import basename, dirname, join, exists
+from os.path import join, exists
 import sys
 from dataclasses import dataclass, field
-from typing import Callable, Dict, Optional, List, Union, Any
-from filelock import FileLock
-import time
+from typing import Callable, Dict, Optional, List
 import tempfile
 import math
 
-from enum import Enum
 
 import numpy as np
 from seqeval.metrics.sequence_labeling import get_entities
 
 import torch
-from torch.utils.data.dataset import Dataset
 from transformers import (
     AutoConfig,
     AutoTokenizer,
@@ -43,22 +37,12 @@ from transformers import (
     SchedulerType,
     get_cosine_with_hard_restarts_schedule_with_warmup,
     get_cosine_schedule_with_warmup,
-    get_constant_schedule_with_warmup,
     get_linear_schedule_with_warmup,
     TrainerCallback,
 )
 from transformers.training_args import IntervalStrategy
-from transformers.data.processors.utils import InputFeatures
-from transformers.tokenization_utils import PreTrainedTokenizer
-from transformers.data.metrics import acc_and_f1
-from transformers.data.processors.utils import (
-    DataProcessor,
-    InputExample,
-    InputFeatures,
-)
 from transformers import ALL_PRETRAINED_CONFIG_ARCHIVE_MAP
-from transformers.optimization import AdamW, get_scheduler
-from transformers.trainer_pt_utils import get_parameter_names
+from transformers.optimization import AdamW
 from transformers.file_utils import hf_bucket_url, CONFIG_NAME
 
 from .cnlp_processors import (
@@ -96,14 +80,15 @@ eval_state = defaultdict(lambda: -1)
 # For debugging early stopping logging
 class EvalCallback(TrainerCallback):
     """ """
+
     def on_evaluate(self, args, state, control, **kwargs):
         """
 
         Args:
-          args: 
-          state: 
-          control: 
-          **kwargs: 
+          args:
+          state:
+          control:
+          **kwargs:
 
         Returns:
 
@@ -130,11 +115,13 @@ class EvalCallback(TrainerCallback):
             state_dict.update(model_dict)
             eval_state.update(state_dict)
 
+
 # For stopping with actual_epochs while
 # spoofing the lr scheduler with num_train_epochs
 # as described in the README
 class StopperCallback(TrainerCallback):
     """ """
+
     def __init__(self, last_step=-1, last_epoch=-1):
         self.last_step = last_step
         self.last_epoch = last_epoch
@@ -143,10 +130,10 @@ class StopperCallback(TrainerCallback):
         """
 
         Args:
-          args: 
-          state: 
-          control: 
-          **kwargs: 
+          args:
+          state:
+          control:
+          **kwargs:
 
         Returns:
 
@@ -176,11 +163,15 @@ class CnlpTrainingArguments(TrainingArguments):
     )
     actual_steps: Optional[int] = field(
         default=-1,
-        metadata={"help": "When specified (greater than 0) stops the training process at this number of steps, overriding num_training_epochs if fewer steps than"},
+        metadata={
+            "help": "When specified (greater than 0) stops the training process at this number of steps, overriding num_training_epochs if fewer steps than"
+        },
     )
     actual_epochs: Optional[float] = field(
         default=-1,
-        metadata={"help": "When specified (greater than 0) stops the training process at this epoch fragment, overriding num_training_epochs if fewer steps than"},
+        metadata={
+            "help": "When specified (greater than 0) stops the training process at this epoch fragment, overriding num_training_epochs if fewer steps than"
+        },
     )
     final_task_weight: Optional[float] = field(
         default=1.0,
@@ -372,7 +363,7 @@ def is_pretrained_model(model_name):
     """
 
     Args:
-      model_name: 
+      model_name:
 
     Returns:
 
@@ -393,7 +384,7 @@ def is_pretrained_model(model_name):
 def main(json_file=None, json_obj=None):
     """See all possible arguments in :class:`transformers.TrainingArguments`
     or by passing the --help flag to this script.
-    
+
     We now keep distinct sets of args, for a cleaner separation of concerns.
 
     Args:
@@ -442,9 +433,9 @@ def main(json_file=None, json_obj=None):
             f"Output directory ({training_args.output_dir}) already exists and is not empty. Use --overwrite_output_dir to overcome."
         )
 
-    assert len(data_args.task_name) == len(
-        data_args.data_dir
-    ), "Number of tasks and data directories should be the same!"
+    assert len(data_args.task_name) == len(data_args.data_dir), (
+        "Number of tasks and data directories should be the same!"
+    )
 
     # Setup logging
     logging.basicConfig(
@@ -527,7 +518,6 @@ def main(json_file=None, json_obj=None):
             "<SITE-START>",
             "<SITE-END>",
             "<cr>",
-            
         ],
     )
 
@@ -574,7 +564,6 @@ def main(json_file=None, json_obj=None):
     # The .from_pretrained methods guarantee that only one local process can concurrently
     # download model & vocab.
 
-    pretrained = False
 
     if model_name == "cnn":
         model = CnnSentenceClassifier(
@@ -605,7 +594,6 @@ def main(json_file=None, json_obj=None):
         #     finetuning_task=data_args.task_name,
         # )
 
-        pretrained = True
 
         encoder_name = (
             model_args.config_name
@@ -745,7 +733,6 @@ def main(json_file=None, json_obj=None):
             )
             # num_tokens=len(tokenizer))
             config.vocab_size = len(tokenizer)
-            pretrained = True
             model = CnlpModelForClassification(
                 config=config,
                 class_weights=None
@@ -757,10 +744,9 @@ def main(json_file=None, json_obj=None):
                 argument_regularization=training_args.arg_reg,
             )
 
-    best_eval_results = None
-    output_eval_file = os.path.join(training_args.output_dir, f"eval_results.txt")
+    output_eval_file = os.path.join(training_args.output_dir, "eval_results.txt")
     output_eval_predictions = os.path.join(
-        training_args.output_dir, f"eval_predictions.txt"
+        training_args.output_dir, "eval_predictions.txt"
     )
 
     if training_args.do_train:
@@ -827,17 +813,18 @@ def main(json_file=None, json_obj=None):
         """
 
         Args:
-          task_names: List[str]: 
-          model: 
+          task_names: List[str]:
+          model:
 
         Returns:
 
         """
+
         def compute_metrics_fn(p: EvalPrediction):
             """
 
             Args:
-              p: EvalPrediction: 
+              p: EvalPrediction:
 
             Returns:
 
@@ -894,7 +881,7 @@ def main(json_file=None, json_obj=None):
 
             one_score = sum(task_scores) / len(task_scores)
 
-            if not model is None:
+            if model is not None:
                 if not hasattr(model, "best_score") or one_score > model.best_score:
                     # For convenience, we also re-save the tokenizer to the same directory,
                     # so that you can share your model easily on huggingface.co/models =)
@@ -918,7 +905,7 @@ def main(json_file=None, json_obj=None):
                                     writer.write("%s = %s\n" % (key, value))
                                 if any(eval_state):
                                     writer.write(
-                                        f"\n\n Current state (In Compute Metrics Function) \n\n"
+                                        "\n\n Current state (In Compute Metrics Function) \n\n"
                                     )
                                     for key, value in eval_state.items():
                                         writer.write(f"{key} : {value} \n")
@@ -994,9 +981,7 @@ def main(json_file=None, json_obj=None):
         )
         using_scheduler = True
 
-    elif (
-        training_args.lr_scheduler_type == SchedulerType["CONSTANT"]
-    ): 
+    elif training_args.lr_scheduler_type == SchedulerType["CONSTANT"]:
         """
         num_cycles = 0
         logger.info(
@@ -1017,7 +1002,7 @@ def main(json_file=None, json_obj=None):
     # while uncommenting the constant
     # scheduler generation above.
     # The current code is an artifact of debugging,
-    # leaving it like this for sake of documentation 
+    # leaving it like this for sake of documentation
     if using_scheduler:
         optimizers = optimizer, scheduler
         # Initialize our Trainer
@@ -1083,7 +1068,7 @@ def main(json_file=None, json_obj=None):
                     logger.info("  %s = %s", key, value)
                     writer.write("%s = %s\n" % (key, value))
                 if any(eval_state):
-                    writer.write(f"\n\n Current state (In do_eval (End?)) \n\n")
+                    writer.write("\n\n Current state (In do_eval (End?)) \n\n")
                     for key, value in eval_state.items():
                         writer.write(f"{key} : {value} \n")
 
@@ -1177,7 +1162,7 @@ def main(json_file=None, json_obj=None):
                 )
 
             output_test_file = os.path.join(
-                training_args.output_dir, f"test_results.txt"
+                training_args.output_dir, "test_results.txt"
             )
             if trainer.is_world_process_zero():
                 with open(output_test_file, "w") as writer:
@@ -1193,7 +1178,7 @@ def _mp_fn(index):
     """
 
     Args:
-      index: 
+      index:
 
     Returns:
 

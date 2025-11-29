@@ -32,18 +32,18 @@ Add custom classes here to add new tasks to the library with the following steps
     :type: typing.Dict[str, str]
 
 """
+
 import os
 import random
-from os.path import basename, dirname
-import time
+
 
 # sklearn warnings are useless
 def warn(*args, **kwargs):
     """
 
     Args:
-      *args: 
-      **kwargs: 
+      *args:
+      **kwargs:
 
     Returns:
 
@@ -61,16 +61,10 @@ import logging
 import json
 
 from itertools import chain
-from dataclasses import dataclass, field
-from typing import Callable, Dict, Optional, List, Union, Any
 from transformers.data.processors.utils import DataProcessor, InputExample
-import torch
-from torch.utils.data.dataset import Dataset
-from transformers.tokenization_utils import PreTrainedTokenizer
 from transformers.data.metrics import simple_accuracy
-from sklearn.metrics import matthews_corrcoef, f1_score, recall_score, precision_score
+from sklearn.metrics import f1_score, recall_score, precision_score
 import numpy as np
-import numpy  # for Sphinx
 from seqeval.metrics import (
     f1_score as seq_f1,
     classification_report as seq_cls,
@@ -83,13 +77,13 @@ logger = logging.getLogger(__name__)
 
 def tagging_metrics(task_name, preds, labels):
     """One of the metrics functions for use in :func:`cnlp_compute_metrics`.
-    
+
     Generates evaluation metrics for sequence tagging tasks.
-    
+
     Ignores tags for which the true label is -100.
-    
+
     The returned dict is structured as follows::
-    
+
         {
             'acc': accuracy
             'token_f1': token-wise F1 score
@@ -108,8 +102,8 @@ def tagging_metrics(task_name, preds, labels):
     """
     processor = cnlp_processors[task_name]()
     label_set = processor.get_labels()
-    preds = np.array([*chain.from_iterable(preds)])#.flatten()
-    labels = np.array([*chain.from_iterable(labels)])#.flatten().astype("int")
+    preds = np.array([*chain.from_iterable(preds)])  # .flatten()
+    labels = np.array([*chain.from_iterable(labels)])  # .flatten().astype("int")
     # I don't even care anymore
     (pred_inds,) = np.where(labels != -100)
 
@@ -141,13 +135,13 @@ def tagging_metrics(task_name, preds, labels):
 
 def relation_metrics(task_name, preds, labels):
     """One of the metrics functions for use in :func:`cnlp_compute_metrics`.
-    
+
     Generates evaluation metrics for relation extraction tasks.
-    
+
     Ignores tags for which the true label is -100.
-    
+
     The returned dict is structured as follows::
-    
+
         {
             'f1': F1 score
             'acc': accuracy
@@ -213,13 +207,13 @@ def relation_metrics(task_name, preds, labels):
 
 def pipeline_relation_metrics(task_name, preds, labels):
     """One of the metrics functions for use in :func:`cnlp_compute_metrics`.
-    
+
     Generates evaluation metrics for relation extraction tasks.
-    
+
     Ignores tags for which the true label is -100.
-    
+
     The returned dict is structured as follows::
-    
+
         {
             'f1': F1 score
             'acc': accuracy
@@ -278,11 +272,11 @@ def fix_np_types(input_variable):
     """In the mtl classification setting, f1 is an array, and when the HF library
     tries to write out the training history to a json file it will throw an error.
     Here, we just check whether it's a numpy array and if so convert to a list.
-    
+
     :meta private:
 
     Args:
-      input_variable: 
+      input_variable:
 
     Returns:
 
@@ -295,11 +289,11 @@ def fix_np_types(input_variable):
 
 def acc_and_f1(preds, labels):
     """One of the metrics functions for use in :func:`cnlp_compute_metrics`.
-    
+
     Generates evaluation metrics for generic tasks.
-    
+
     The returned dict is structured as follows::
-    
+
         {
             'acc': accuracy
             'f1': F1 score
@@ -379,7 +373,7 @@ rt_tagging = {
 
 def cnlp_compute_metrics(task_name, preds, labels):
     """Function that defines and computes the metrics used for each task.
-    
+
     When adding a task definition to this file, add a branch to this
     function defining what its evaluation metric invocation should be.
     If the new task is a simple classification task, a sensible default
@@ -394,9 +388,9 @@ def cnlp_compute_metrics(task_name, preds, labels):
       a dictionary containing evaluation metrics
 
     """
-    assert len(preds) == len(
-        labels
-    ), f"Predictions and labels have mismatched lengths {len(preds)} and {len(labels)}"
+    assert len(preds) == len(labels), (
+        f"Predictions and labels have mismatched lengths {len(preds)} and {len(labels)}"
+    )
     if (
         task_name == "polarity"
         or task_name == "uncertainty"
@@ -478,7 +472,7 @@ class CnlpProcessor(DataProcessor):
         """
 
         Args:
-          tensor_dict: 
+          tensor_dict:
 
         Returns:
 
@@ -494,7 +488,7 @@ class CnlpProcessor(DataProcessor):
         """
 
         Args:
-          data_dir: 
+          data_dir:
 
         Returns:
 
@@ -507,7 +501,7 @@ class CnlpProcessor(DataProcessor):
         """
 
         Args:
-          data_dir: 
+          data_dir:
 
         Returns:
 
@@ -520,7 +514,7 @@ class CnlpProcessor(DataProcessor):
         """
 
         Args:
-          data_dir: 
+          data_dir:
 
         Returns:
 
@@ -532,31 +526,31 @@ class CnlpProcessor(DataProcessor):
     def _create_examples(self, lines, set_type, sequence=False, relations=False):
         """**This is an internal function, but it is included in the documentation
         to illustrate the input format for single-task datasets.**
-        
+
         ----
-        
+
         Creates examples for the training, dev and test sets from a
         headingless TSV file with one of the following structures:
-        
+
         * For sequence classification::
-        
+
             label\ttext
-        
+
         * For sequence tagging::
-        
+
             tag1 tag2 ... tagN\ttext
-        
+
         * For relation tagging::
-        
+
             <source1,target1> , <source2,target2> , ... , <sourceN,targetN>\ttext
-        
+
         TODO: check that these formats are correct
-        
+
         :meta public:
 
         Args:
-          lines: 
-          set_type: 
+          lines:
+          set_type:
           sequence:  (Default value = False)
           relations:  (Default value = False)
 
@@ -565,7 +559,7 @@ class CnlpProcessor(DataProcessor):
         """
         test_mode = set_type == "test"
         examples = []
-        for (i, line) in enumerate(lines):
+        for i, line in enumerate(lines):
             guid = "%s-%s" % (set_type, i)
             if test_mode:
                 # Some test sets have labels and some do not. discard the label if it has it but have to check so
@@ -616,8 +610,8 @@ class LabeledSentenceProcessor(CnlpProcessor):
         """
 
         Args:
-          lines: 
-          set_type: 
+          lines:
+          set_type:
 
         Returns:
 
@@ -628,7 +622,7 @@ class LabeledSentenceProcessor(CnlpProcessor):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -647,7 +641,7 @@ class NegationProcessor(LabeledSentenceProcessor):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -666,7 +660,7 @@ class UncertaintyProcessor(LabeledSentenceProcessor):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -685,7 +679,7 @@ class HistoryProcessor(LabeledSentenceProcessor):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -704,7 +698,7 @@ class DtrProcessor(LabeledSentenceProcessor):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -730,7 +724,7 @@ class AlinkxProcessor(LabeledSentenceProcessor):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -756,7 +750,7 @@ class AlinkProcessor(LabeledSentenceProcessor):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -799,7 +793,7 @@ class TlinkProcessor(LabeledSentenceProcessor):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -809,6 +803,7 @@ class TlinkProcessor(LabeledSentenceProcessor):
 
 class DpheRelProcessor(LabeledSentenceProcessor):
     """ """
+
     def get_labels(self):
         """ """
         return [
@@ -825,7 +820,7 @@ class DpheRelProcessor(LabeledSentenceProcessor):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -835,6 +830,7 @@ class DpheRelProcessor(LabeledSentenceProcessor):
 
 class RTRelProcessor(LabeledSentenceProcessor):
     """ """
+
     def get_labels(self):
         """ """
         return [
@@ -851,7 +847,7 @@ class RTRelProcessor(LabeledSentenceProcessor):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -886,7 +882,7 @@ class TimeCatProcessor(LabeledSentenceProcessor):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -905,7 +901,7 @@ class ContextualModalityProcessor(LabeledSentenceProcessor):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -925,7 +921,7 @@ class UciDrugSentimentProcessor(LabeledSentenceProcessor):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -944,7 +940,7 @@ class Mimic_7_Processor(LabeledSentenceProcessor):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -963,7 +959,7 @@ class Mimic_3_Processor(LabeledSentenceProcessor):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -982,7 +978,7 @@ class CovidProcessor(LabeledSentenceProcessor):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -997,8 +993,8 @@ class RelationProcessor(CnlpProcessor):
         """
 
         Args:
-          lines: 
-          set_type: 
+          lines:
+          set_type:
 
         Returns:
 
@@ -1008,6 +1004,7 @@ class RelationProcessor(CnlpProcessor):
 
 class DpheEndToEndProcessor(RelationProcessor):
     """ """
+
     def get_labels(self):
         """ """
         return [
@@ -1024,7 +1021,7 @@ class DpheEndToEndProcessor(RelationProcessor):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -1035,6 +1032,7 @@ class DpheEndToEndProcessor(RelationProcessor):
 
 class RTEndToEndProcessor(RelationProcessor):
     """ """
+
     def get_labels(self):
         """ """
         return [
@@ -1051,7 +1049,7 @@ class RTEndToEndProcessor(RelationProcessor):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -1066,7 +1064,7 @@ class TlinkRelationProcessor(RelationProcessor):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -1088,8 +1086,8 @@ class SequenceProcessor(CnlpProcessor):
         """
 
         Args:
-          lines: 
-          set_type: 
+          lines:
+          set_type:
 
         Returns:
 
@@ -1104,7 +1102,7 @@ class TimexProcessor(SequenceProcessor):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -1141,7 +1139,7 @@ class EventProcessor(SequenceProcessor):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -1171,7 +1169,7 @@ class DpheProcessor(SequenceProcessor):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -1201,11 +1199,12 @@ class DpheProcessor(SequenceProcessor):
 
 class DpheMedProcessor(SequenceProcessor):
     """ """
+
     def get_one_score(self, results):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -1219,11 +1218,12 @@ class DpheMedProcessor(SequenceProcessor):
 
 class DpheDosageProcessor(SequenceProcessor):
     """ """
+
     def get_one_score(self, results):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -1237,11 +1237,12 @@ class DpheDosageProcessor(SequenceProcessor):
 
 class DpheDurationProcessor(SequenceProcessor):
     """ """
+
     def get_one_score(self, results):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -1255,11 +1256,12 @@ class DpheDurationProcessor(SequenceProcessor):
 
 class DpheFormProcessor(SequenceProcessor):
     """ """
+
     def get_one_score(self, results):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -1273,11 +1275,12 @@ class DpheFormProcessor(SequenceProcessor):
 
 class DpheFrequencyProcessor(SequenceProcessor):
     """ """
+
     def get_one_score(self, results):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -1291,11 +1294,12 @@ class DpheFrequencyProcessor(SequenceProcessor):
 
 class DpheRouteProcessor(SequenceProcessor):
     """ """
+
     def get_one_score(self, results):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -1309,11 +1313,12 @@ class DpheRouteProcessor(SequenceProcessor):
 
 class DpheStrengthProcessor(SequenceProcessor):
     """ """
+
     def get_one_score(self, results):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -1327,11 +1332,12 @@ class DpheStrengthProcessor(SequenceProcessor):
 
 class RTProcessor(SequenceProcessor):
     """ """
+
     def get_one_score(self, results):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -1357,11 +1363,12 @@ class RTProcessor(SequenceProcessor):
 
 class RTBoostProcessor(SequenceProcessor):
     """ """
+
     def get_one_score(self, results):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -1375,11 +1382,12 @@ class RTBoostProcessor(SequenceProcessor):
 
 class RTDateProcessor(SequenceProcessor):
     """ """
+
     def get_one_score(self, results):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -1393,11 +1401,12 @@ class RTDateProcessor(SequenceProcessor):
 
 class RTDoseProcessor(SequenceProcessor):
     """ """
+
     def get_one_score(self, results):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -1411,11 +1420,12 @@ class RTDoseProcessor(SequenceProcessor):
 
 class RTFXFreqProcessor(SequenceProcessor):
     """ """
+
     def get_one_score(self, results):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -1429,11 +1439,12 @@ class RTFXFreqProcessor(SequenceProcessor):
 
 class RTFXNoProcessor(SequenceProcessor):
     """ """
+
     def get_one_score(self, results):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -1447,11 +1458,12 @@ class RTFXNoProcessor(SequenceProcessor):
 
 class RTSiteProcessor(SequenceProcessor):
     """ """
+
     def get_one_score(self, results):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -1479,7 +1491,7 @@ class MTLClassifierProcessor(DataProcessor):
 
     def get_num_tasks(self):
         """Get the number of subtasks in this multi-task setting.
-        
+
         Equivalent to :obj:`len(self.get_classifiers())`.
 
         Args:
@@ -1493,7 +1505,7 @@ class MTLClassifierProcessor(DataProcessor):
     def get_classifier_id(self):
         """Get the classifier ID name used in building the GUIDs for the
         :class:`transformers.InputExample` instances.
-        
+
         Not necessarily equal to the ``task_name`` used as keys for
         :data:`cnlp_processors` and :data:`cnlp_output_modes`.
 
@@ -1520,7 +1532,7 @@ class MTLClassifierProcessor(DataProcessor):
         """Not used.
 
         Args:
-          tensor_dict: 
+          tensor_dict:
 
         Returns:
 
@@ -1531,7 +1543,7 @@ class MTLClassifierProcessor(DataProcessor):
         """
 
         Args:
-          data_dir: 
+          data_dir:
 
         Returns:
 
@@ -1542,7 +1554,7 @@ class MTLClassifierProcessor(DataProcessor):
         """
 
         Args:
-          data_dir: 
+          data_dir:
 
         Returns:
 
@@ -1553,7 +1565,7 @@ class MTLClassifierProcessor(DataProcessor):
         """
 
         Args:
-          data_dir: 
+          data_dir:
 
         Returns:
 
@@ -1563,12 +1575,12 @@ class MTLClassifierProcessor(DataProcessor):
     def _get_json_examples(self, fn, set_type):
         """**This is an internal function, but it is included in the documentation
         to illustrate the input format for MTL datasets.**
-        
+
         ----
-        
+
         Creates examples for the training, dev and test sets
         from a JSON file with the following structure::
-        
+
             {
                 "<guid_1>": {
                     "text": "<text>",
@@ -1583,15 +1595,14 @@ class MTLClassifierProcessor(DataProcessor):
         Args:
           str: fn: the path to the dataset file to load
           str: set_type: the type of split the file contains (e.g. train, dev, test)
-          fn: 
-          set_type: 
+          fn:
+          set_type:
 
         Returns:
           the examples loaded from the file
           :meta public:
 
         """
-        test_mode = set_type == "test"
         examples = []
 
         with open(fn, "rt") as f:
@@ -1629,7 +1640,7 @@ class MimicRadiProcessor(MTLClassifierProcessor):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 
@@ -1688,7 +1699,7 @@ class i2b22008Processor(MTLClassifierProcessor):
         """
 
         Args:
-          results: 
+          results:
 
         Returns:
 

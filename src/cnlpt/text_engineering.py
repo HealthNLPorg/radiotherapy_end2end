@@ -11,6 +11,7 @@ from itertools import accumulate, combinations, groupby, tee
 
 class ChunkType(Enum):
     """ """
+
     BEGIN = 0
     HEADING_CR = 1
     TABLE_CR = 2
@@ -20,14 +21,14 @@ class ChunkType(Enum):
 
 def get_chunks(paragraph):
     """
-    Get paragraph chunks (pre-windowing) 
+    Get paragraph chunks (pre-windowing)
     for better detection from dose NER
 
     Args:
-      paragraph: raw paragraph  
+      paragraph: raw paragraph
 
     Returns:
-      <cr>-parsing chunked paragraph pairs of indices and text, 
+      <cr>-parsing chunked paragraph pairs of indices and text,
      e.g. ( (0, 3) , '<cr> <cr> <cr> <cr>' )
     """
 
@@ -50,7 +51,7 @@ def get_chunks(paragraph):
         return tok.strip() == "<cr>"
 
     # each text segment gets an index corresponding to the
-    # chunk of which it is a member 
+    # chunk of which it is a member
     def chunk(type_text_pair):
         counter, prev_type = stack.pop()
         curr_is_cr, curr_text = type_text_pair
@@ -73,8 +74,8 @@ def get_chunks(paragraph):
                 stack.append((counter + 1, curr_type))
                 return counter + 1
 
-    # From https://more-itertools.readthedocs.io/en/stable/_modules/more_itertools/recipes.html 
-    # (this is built in to itertools in Python 3.10 but cnlpt v0.3.0 requires 3.8)    
+    # From https://more-itertools.readthedocs.io/en/stable/_modules/more_itertools/recipes.html
+    # (this is built in to itertools in Python 3.10 but cnlpt v0.3.0 requires 3.8)
     def pairwise(iterable):
         a, b = tee(iterable)
         next(b, None)
@@ -101,7 +102,7 @@ def noncr_2_cr_inds(chunk):
     and the indices of the tokens relative to the original string
 
     Args:
-      chunk: chunk text 
+      chunk: chunk text
 
     Returns:
       list of non-cr tokens, list of their indices in the chunk
@@ -121,16 +122,15 @@ def noncr_2_cr_inds(chunk):
     return " ".join(filtered_tokens), [*filtered_inds]
 
 
- 
 def transitive_closure(iterable):
     """
     Taken from https://stackoverflow.com/a/8674062
 
     Args:
-      iterable: iterable of pairs 
+      iterable: iterable of pairs
 
     Returns:
-      Transitive closure of iterable, e.g. ( a , b ) , ( b , c ) -> ( a , c ), 
+      Transitive closure of iterable, e.g. ( a , b ) , ( b , c ) -> ( a , c ),
       so set with closure is ( a , b ) , ( b , c ) , ( a , c )
     """
     closure = set(iterable)
@@ -152,13 +152,14 @@ def candidate_date_links(date_indices):
     Finds which dates are possibly linked
 
     Args:
-      date_indices: indices of date mentions in a paragraph 
+      date_indices: indices of date mentions in a paragraph
 
     Returns:
       pairs of date mentions which are possibly connected (separated by only one token)
     """
-    
+
     date_pairs = combinations(sorted(date_indices), 2)
+
     # checks whether the dates are separated by a single connector
     def single_connect(date_pair):
         d1, d2 = date_pair
@@ -173,7 +174,7 @@ def get_date_links(paragraph, date_indices):
     give a date, get its linked dates
 
     Args:
-      paragraph: paragraph text 
+      paragraph: paragraph text
       date_indices: token indices of date mentions in the paragraph
 
     Returns:
@@ -209,7 +210,7 @@ def get_intersect(ls1, ls2):
     for getting overlapping intervals from two lists of tuples
 
     Args:
-      ls1: list of intervals/tuples 
+      ls1: list of intervals/tuples
       ls2: list of intervals/tuples
 
     Returns:

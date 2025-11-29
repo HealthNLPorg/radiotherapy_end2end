@@ -1,5 +1,4 @@
 from .pipelines import ctakes_tok
-from collections import deque
 from itertools import chain, filterfalse, groupby
 
 
@@ -8,7 +7,7 @@ def unhash_uniq(ls):
     Ugly hack for getting getting unique labels since dictionaries are unhashable
 
     Args:
-      ls: list of items 
+      ls: list of items
 
     Returns:
       list of unique items from ls
@@ -26,15 +25,20 @@ def admit_rel(label, src_dose, trg_dose):
     and a new pair of entity mentions to encapsulate with the same labeling information
 
     Args:
-      label: tuple of (first indices, second indices, classification dictionary) 
+      label: tuple of (first indices, second indices, classification dictionary)
       src_dose: dose mention in the label
       trg_dose: dose mention to which we want to link the attribute in the label
 
     Returns:
-      new tuple of (first indices, second indices, classification dictionary) 
-      with the indices corresponding to src_dose being replaced with the trg_dose  
+      new tuple of (first indices, second indices, classification dictionary)
+      with the indices corresponding to src_dose being replaced with the trg_dose
+      or None if there are issues
     """
-    sig_span = [*filter(lambda s: s != src_dose, label[:2])][0]
+    try:
+        sig_span = [*filter(lambda s: s != src_dose, label[:2])][0]
+    except Exception as e:
+        print(f"{e} with {label} {src_doce} {trg_dose}")
+        return None
     _, _, sent_dict = label
     new_sent_dict = sent_dict.copy()
     new_sent_dict["source"] = "inference"
@@ -46,8 +50,8 @@ def _coordinate_doses(candidate, fixed_labels):
     Coordinates a list of labels across a given DOSE-DOSE pair
 
     Args:
-      candidate: relation tuple of two doses 
-      fixed_labels: other labels for which we want to generate new labels based on the candidate dose pair  
+      candidate: relation tuple of two doses
+      fixed_labels: other labels for which we want to generate new labels based on the candidate dose pair
 
     Returns:
       list of original labels plus any new labels from the coordination over the candidate pair
@@ -77,27 +81,27 @@ def _coordinate_doses(candidate, fixed_labels):
     def second_to_first(label):
         return admit_rel(label, second_dose, first_dose)
 
-    new_seconds = map(first_to_second, first_dose_rels)
-    new_firsts = map(second_to_first, second_dose_rels)
+    new_seconds = filter(None, map(first_to_second, first_dose_rels))
+    new_firsts = filter(None, map(second_to_first, second_dose_rels))
     return unhash_uniq([*new_firsts, *new_seconds])
 
 
 def dose_link_coordination(labels):
     """
-    There are a number of linked doses and 
-    relations that should arise from the linked doses that 
-    the raw system predictions fail to discover.  
+    There are a number of linked doses and
+    relations that should arise from the linked doses that
+    the raw system predictions fail to discover.
     This rule recovers some cases
 
     Args:
-      labels: list of labels 
+      labels: list of labels
 
     Returns:
       original labels with additional new labels from the rule
       (1 , 2 ) : DOSE-X and ( 2 , 3 ) : DOSE-DOSE and ( 3 , 4 ) : DOSE-Y ->
       (1 , 3 ) : DOSE-X and ( 2 , 4 ) DOSE-Y
-      We make sure we have transitive closure of DOSE-DOSE instances first 
-      before generating the new labels. We add the transitive closure and the resulting 
+      We make sure we have transitive closure of DOSE-DOSE instances first
+      before generating the new labels. We add the transitive closure and the resulting
       labels to the original list
     """
 
@@ -131,7 +135,6 @@ def dose_link_coordination(labels):
     # compute the transitive closure of the
     # DOSE-DOSEs
     if len(generator_candidates) > 1:
-
         # here we're just using the naive (non-qualified)
         # maximum to broadcast the signal of the
         # highest scoring DOSE-DOSE
@@ -168,7 +171,6 @@ def dose_link_coordination(labels):
 
     new_labels = []
     if any(candidates):
-
         # get the coordinated labels over everything
         # now that we have the transitive closure
         new_labels = [*chain.from_iterable(map(coordinate_doses, candidates))]
@@ -179,15 +181,15 @@ def dose_link_coordination(labels):
 
 def linked_date_coordination(labels, date_map):
     """
-    The system's predictive power is less capable on date detection 
+    The system's predictive power is less capable on date detection
     and DOSE-DATE prediction.  This rule captures some missed cases
 
     Args:
-      labels: list of paragraph labels  
+      labels: list of paragraph labels
       date_map: dictionary of linked date mentions in the paragraph
 
     Returns:
-      labels with new DOSE-DATEs for each date mentions with a dose mention which is associated 
+      labels with new DOSE-DATEs for each date mentions with a dose mention which is associated
       with one of its linked dates in date_map
     """
 
@@ -228,12 +230,12 @@ def linked_date_coordination(labels, date_map):
 
 def boost_site_coordination(paragraph, labels):
     """
-    Every DOSE-BOOST admits a DOSE-SITE, 
+    Every DOSE-BOOST admits a DOSE-SITE,
     but our relation model can only predict one label per instance,
     this rule remedies that limitation
 
     Args:
-      paragraph: paragraph text 
+      paragraph: paragraph text
       labels: span labels from model predictions
 
     Returns:
@@ -244,7 +246,7 @@ def boost_site_coordination(paragraph, labels):
 
     # obtain simplified indices
     # e.g. (first_0, first_1) , (second_0, second_1) -> (first_0, second_0)
-    # for cnlpt scoring and add them to labels 
+    # for cnlpt scoring and add them to labels
     def gen_cnlpt_indices(label):
         first_span, second_span, sent_dict = label
         first_ind, _ = first_span
@@ -285,7 +287,7 @@ def boost_site_coordination(paragraph, labels):
         undetected_boost = (
             "boost" in first_text.lower() or "boost" in second_text.lower()
         )
-        return undetected_boost  
+        return undetected_boost
 
     # make a new DOSE-BOOST out of a given label
     def to_boost(label):
@@ -305,15 +307,15 @@ def boost_site_coordination(paragraph, labels):
 
 def qual_max(label_ls):
     """
-    The model tends to overuse classification as 'None', 
-    as a result we have this 'qualified maximum' function as 
+    The model tends to overuse classification as 'None',
+    as a result we have this 'qualified maximum' function as
     a corrective heuristic
 
     Args:
-      label_ls: List of labels that share the same spans within the sentence 
+      label_ls: List of labels that share the same spans within the sentence
 
     Returns:
-      The unique label with the 'qualified maximum' score: 
+      The unique label with the 'qualified maximum' score:
       i.e. prefer non-'None' label to 'None' label even if 'None' is highest score
       (within a difference of 0.25)
     """
@@ -338,16 +340,16 @@ def qual_max(label_ls):
 
 def filter_and_extrapolate_labels(paragraph, labels, date_map):
     """
-    Main entry point for the rule-based postprocessing of the raw system predictions 
+    Main entry point for the rule-based postprocessing of the raw system predictions
 
     Args:
-      paragraph: paragraph text 
+      paragraph: paragraph text
       labels: labels predicted by the model
       date_map: dictionary of linked dates
 
     Returns:
       original labels plus additional labels obtained from boost recovery and boost <-> site,
-      dose <-> dose, and date <-> date coordination rules. 
+      dose <-> dose, and date <-> date coordination rules.
     """
 
     # NOT JUST MAXIMUM SCORE
@@ -365,10 +367,9 @@ def filter_and_extrapolate_labels(paragraph, labels, date_map):
 
     proto_ground_labels = [*map(add_ground, labels)]
 
-    
     # obtain simplified indices
     # e.g. (first_0, first_1) , (second_0, second_1) -> (first_0, second_0)
-    # for cnlpt scoring 
+    # for cnlpt scoring
     def cnlpt_inds(label):
         first_span, second_span, _ = label
         first_ind, _ = first_span

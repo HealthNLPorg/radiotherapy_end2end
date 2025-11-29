@@ -1,8 +1,8 @@
 """
 Module containing the CNLP transformer model.
 """
+
 # from transformers.models.auto import  AutoModel, AutoConfig
-import copy
 import inspect
 from typing import Optional, List, Any, Dict
 
@@ -25,7 +25,9 @@ class ClassificationHead(nn.Module):
     def __init__(self, config, num_labels, hidden_size=-1):
         super().__init__()
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
-        self.out_proj = nn.Linear(config.hidden_size if hidden_size < 0 else hidden_size, num_labels)
+        self.out_proj = nn.Linear(
+            config.hidden_size if hidden_size < 0 else hidden_size, num_labels
+        )
 
     def forward(self, features, *kwargs):
         x = self.dropout(features)
@@ -34,22 +36,33 @@ class ClassificationHead(nn.Module):
 
 
 class RepresentationProjectionLayer(nn.Module):
-    def __init__(self, config, layer=10, tokens=False, tagger=False, relations=False, num_attention_heads=-1, head_size=64):
+    def __init__(
+        self,
+        config,
+        layer=10,
+        tokens=False,
+        tagger=False,
+        relations=False,
+        num_attention_heads=-1,
+        head_size=64,
+    ):
         super().__init__()
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         if relations:
             self.dense = nn.Identity()
         else:
             self.dense = nn.Linear(config.hidden_size, config.hidden_size)
-            
+
         self.layer_to_use = layer
         self.tokens = tokens
         self.tagger = tagger
         self.relations = relations
         self.hidden_size = config.hidden_size
-        
+
         if num_attention_heads <= 0 and relations:
-            raise Exception("Inconsistent configuration: num_attention_heads must be > 0 for relations")
+            raise Exception(
+                "Inconsistent configuration: num_attention_heads must be > 0 for relations"
+            )
 
         if relations:
             self.num_attention_heads = num_attention_heads
@@ -60,10 +73,15 @@ class RepresentationProjectionLayer(nn.Module):
             self.key = nn.Linear(config.hidden_size, self.all_head_size)
 
         if tokens and (tagger or relations):
-            raise Exception('Inconsistent configuration: tokens cannot be true in tagger or relation mode')
+            raise Exception(
+                "Inconsistent configuration: tokens cannot be true in tagger or relation mode"
+            )
 
     def transpose_for_scores(self, x):
-        new_x_shape = x.size()[:-1] + (self.num_attention_heads, self.attention_head_size)
+        new_x_shape = x.size()[:-1] + (
+            self.num_attention_heads,
+            self.attention_head_size,
+        )
         x = x.view(*new_x_shape)
         return x.permute(0, 2, 1, 3)
 
@@ -74,17 +92,25 @@ class RepresentationProjectionLayer(nn.Module):
             # probably involved passing in some sub-sequence of interest so we know what tokens to grab,
             # then we average across those tokens.
             token_lens = event_tokens.sum(1)
-            expanded_tokens = event_tokens.unsqueeze(2).expand(features[0].shape[0], seq_length, self.hidden_size)
+            expanded_tokens = event_tokens.unsqueeze(2).expand(
+                features[0].shape[0], seq_length, self.hidden_size
+            )
             filtered_features = features[self.layer_to_use] * expanded_tokens
-            x = filtered_features.sum(1) / token_lens.unsqueeze(1).expand(features[0].shape[0], self.hidden_size)
+            x = filtered_features.sum(1) / token_lens.unsqueeze(1).expand(
+                features[0].shape[0], self.hidden_size
+            )
         elif self.tagger:
             x = features[self.layer_to_use]
         elif self.relations:
             # something like multi-headed attention but without the weighted sum at the end, so i get (num_heads) features for each of N x N grid, which feads into NxN softmax (with the same parameters)
             hidden_states = features[self.layer_to_use]
-            key_layer = self.transpose_for_scores(self.key(hidden_states))   # Batch X num_heads X seq len X head_size
+            key_layer = self.transpose_for_scores(
+                self.key(hidden_states)
+            )  # Batch X num_heads X seq len X head_size
             query_layer = self.transpose_for_scores(self.query(hidden_states))
-            attention_scores = torch.matmul(query_layer, key_layer.transpose(-1, -2)) # Batch X num_heads X seq_len X seq_len
+            attention_scores = torch.matmul(
+                query_layer, key_layer.transpose(-1, -2)
+            )  # Batch X num_heads X seq_len X seq_len
             # Now we have num_heads features for each N X N relations.
             x = attention_scores / math.sqrt(self.attention_head_size)
             # move the 12 dimension to the end for easier classification
@@ -116,22 +142,23 @@ class CnlpConfig(PretrainedConfig):
     :param bool use_prior_tasks: whether to use the outputs from the previous tasks as additional inputs for subsequent tasks
     :param \**kwargs: arguments for :class:`transformers.PretrainedConfig`
     """
-    model_type='cnlpt'
+
+    model_type = "cnlpt"
 
     def __init__(
         self,
-        encoder_name='roberta-base',
+        encoder_name="roberta-base",
         finetuning_task=None,
         num_labels_list=[],
         layer=-1,
         tokens=False,
         num_rel_attention_heads=12,
         rel_attention_head_dims=64,
-        tagger = [False],
-        relations = [False],
+        tagger=[False],
+        relations=[False],
         use_prior_tasks=False,
-        **kwargs
-     ):
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         # self.name_or_path='cnlpt'
         self.finetuning_task = finetuning_task
@@ -145,19 +172,21 @@ class CnlpConfig(PretrainedConfig):
         self.use_prior_tasks = use_prior_tasks
         self.encoder_name = encoder_name
         self.encoder_config = AutoConfig.from_pretrained(encoder_name).to_dict()
-        if encoder_name.startswith('distilbert'):
-            self.hidden_dropout_prob = self.encoder_config['dropout']
-            self.hidden_size = self.encoder_config['dim']
+        if encoder_name.startswith("distilbert"):
+            self.hidden_dropout_prob = self.encoder_config["dropout"]
+            self.hidden_size = self.encoder_config["dim"]
         else:
             try:
-                self.hidden_dropout_prob = self.encoder_config['hidden_dropout_prob']
-                self.hidden_size = self.encoder_config['hidden_size']
+                self.hidden_dropout_prob = self.encoder_config["hidden_dropout_prob"]
+                self.hidden_size = self.encoder_config["hidden_size"]
             except KeyError as ke:
-                raise ValueError(f'Encoder config does not have an attribute'
-                                 f' "{ke.args[0]}"; this is likely because the API of'
-                                 f' the chosen encoder differs from the BERT/RoBERTa'
-                                 f' API and the DistilBERT API. Encoders with different'
-                                 f' APIs are not yet supported (#35).')
+                raise ValueError(
+                    f"Encoder config does not have an attribute"
+                    f' "{ke.args[0]}"; this is likely because the API of'
+                    f" the chosen encoder differs from the BERT/RoBERTa"
+                    f" API and the DistilBERT API. Encoders with different"
+                    f" APIs are not yet supported (#35)."
+                )
 
 
 class CnlpModelForClassification(PreTrainedModel):
@@ -173,19 +202,20 @@ class CnlpModelForClassification(PreTrainedModel):
     :param bool freeze: whether to freeze the weights of the encoder
     :param bool bias_fit: whether to fine-tune only the bias of the encoder
     """
-    base_model_prefix = 'cnlpt'
+
+    base_model_prefix = "cnlpt"
     config_class = CnlpConfig
 
-    def __init__(self,
-                 config: config_class,
-                 *,
-                 class_weights: Optional[List[float]] = None,
-                 final_task_weight: float = 1.0,
-                 argument_regularization: float = -1,
-                 freeze=False,
-                 bias_fit=False,
-                 ):
-
+    def __init__(
+        self,
+        config: config_class,
+        *,
+        class_weights: Optional[List[float]] = None,
+        final_task_weight: float = 1.0,
+        argument_regularization: float = -1,
+        freeze=False,
+        bias_fit=False,
+    ):
         super().__init__(config)
 
         encoder_config = AutoConfig.from_pretrained(config.encoder_name)
@@ -193,36 +223,50 @@ class CnlpModelForClassification(PreTrainedModel):
         config.encoder_config = encoder_config.to_dict()
         encoder_model = AutoModel.from_config(encoder_config)
         self.encoder = encoder_model.from_pretrained(config.encoder_name)
-        self.encoder.resize_token_embeddings(encoder_config.vocab_size, mean_resizing=False)
+        self.encoder.resize_token_embeddings(
+            encoder_config.vocab_size, mean_resizing=False
+        )
 
         if config.layer > len(encoder_model.encoder.layer):
-            raise ValueError('The layer specified (%d) is too big for the specified encoder which has %d layers' % (
-                config.layer,
-                len(encoder_model.encoder.layer)
-            ))
+            raise ValueError(
+                "The layer specified (%d) is too big for the specified encoder which has %d layers"
+                % (config.layer, len(encoder_model.encoder.layer))
+            )
         self.num_labels = config.num_labels_list
-        
+
         if freeze:
             for param in self.encoder.parameters():
                 param.requires_grad = False
-        
+
         if bias_fit:
             for name, param in self.encoder.named_parameters():
-                if not 'bias' in name:
+                if "bias" not in name:
                     param.requires_grad = False
 
         self.feature_extractors = nn.ModuleList()
         self.logit_projectors = nn.ModuleList()
         self.classifiers = nn.ModuleList()
         total_prev_task_labels = 0
-        for task_ind,task_num_labels in enumerate(self.num_labels):
-            self.feature_extractors.append(RepresentationProjectionLayer(config, layer=config.layer, tokens=config.tokens, tagger=config.tagger[task_ind], relations=config.relations[task_ind], num_attention_heads=config.num_rel_attention_heads, head_size=config.rel_attention_head_dims))
+        for task_ind, task_num_labels in enumerate(self.num_labels):
+            self.feature_extractors.append(
+                RepresentationProjectionLayer(
+                    config,
+                    layer=config.layer,
+                    tokens=config.tokens,
+                    tagger=config.tagger[task_ind],
+                    relations=config.relations[task_ind],
+                    num_attention_heads=config.num_rel_attention_heads,
+                    head_size=config.rel_attention_head_dims,
+                )
+            )
             if config.relations[task_ind]:
                 hidden_size = config.num_rel_attention_heads
                 if config.use_prior_tasks:
                     hidden_size += total_prev_task_labels
 
-                self.classifiers.append(ClassificationHead(config, task_num_labels, hidden_size=hidden_size))
+                self.classifiers.append(
+                    ClassificationHead(config, task_num_labels, hidden_size=hidden_size)
+                )
             else:
                 self.classifiers.append(ClassificationHead(config, task_num_labels))
             total_prev_task_labels += task_num_labels
@@ -253,26 +297,38 @@ class CnlpModelForClassification(PreTrainedModel):
                     # we have batch x len x num_classes.
                     # we want to concatenate the num_classes to the variables at each element of the sequence,
                     # but then need to broadcast it down all the rows of the matrix.
-                    aug = prior_task_logits.unsqueeze(2) # add another dimension to repeat along
-                    aug = aug.repeat(1, 1, seq_len, 1) # repeat along the new empty dimension so we have our seq logits repeated seq_len x seq_len
-                    features = torch.cat( (features, aug), 3) # concatenate the  relation matrix with the sequence matrix
+                    aug = prior_task_logits.unsqueeze(
+                        2
+                    )  # add another dimension to repeat along
+                    aug = aug.repeat(
+                        1, 1, seq_len, 1
+                    )  # repeat along the new empty dimension so we have our seq logits repeated seq_len x seq_len
+                    features = torch.cat(
+                        (features, aug), 3
+                    )  # concatenate the  relation matrix with the sequence matrix
                 else:
-                    logging.warn("It is not implemented to add a task of shape %s to a relation matrix" % ( str(prior_task_logits.shape)))
+                    logging.warn(
+                        "It is not implemented to add a task of shape %s to a relation matrix"
+                        % (str(prior_task_logits.shape))
+                    )
             elif len(features.shape) == 3:
                 # sequence
-                logging.warn("It is not implemented to add previous task of any type to a sequence task")
+                logging.warn(
+                    "It is not implemented to add previous task of any type to a sequence task"
+                )
 
         return features
 
-    def compute_loss(self,
-                     task_logits: torch.FloatTensor,
-                     labels: torch.LongTensor,
-                     task_ind,
-                     task_num_labels,
-                     batch_size,
-                     seq_len,
-                     state: dict,
-                     ) -> None:
+    def compute_loss(
+        self,
+        task_logits: torch.FloatTensor,
+        labels: torch.LongTensor,
+        task_ind,
+        task_num_labels,
+        batch_size,
+        seq_len,
+        state: dict,
+    ) -> None:
         """
         Computes the loss for a single batch and a single task.
 
@@ -291,26 +347,39 @@ class CnlpModelForClassification(PreTrainedModel):
             loss_fct = MSELoss()
             task_loss = loss_fct(task_logits.view(-1), labels.view(-1))
         else:
-            if not self.class_weights[task_ind] is None:
-                class_weights = torch.FloatTensor(self.class_weights[task_ind]).to(self.device)
+            if self.class_weights[task_ind] is not None:
+                class_weights = torch.FloatTensor(self.class_weights[task_ind]).to(
+                    self.device
+                )
             else:
                 class_weights = None
             loss_fct = CrossEntropyLoss(weight=class_weights)
 
             if self.relations[task_ind]:
-                task_labels = labels[:, 0, state['task_label_ind']:state['task_label_ind'] + seq_len, :]
-                state['task_label_ind'] += seq_len
-                task_loss = loss_fct(task_logits.permute(0, 3, 1, 2),
-                                     task_labels.type(torch.LongTensor).to(labels.device))
+                task_labels = labels[
+                    :, 0, state["task_label_ind"] : state["task_label_ind"] + seq_len, :
+                ]
+                state["task_label_ind"] += seq_len
+                task_loss = loss_fct(
+                    task_logits.permute(0, 3, 1, 2),
+                    task_labels.type(torch.LongTensor).to(labels.device),
+                )
             elif self.tagger[task_ind]:
                 # in cases where we are only given a single task the HF code will have one fewer dimension in the labels, so just add a dummy dimension to make our indexing work:
                 if labels.ndim == 3:
                     labels = labels.unsqueeze(1)
-                task_labels = labels[:, 0, state['task_label_ind'], :]
-                state['task_label_ind'] += 1
-                task_loss = loss_fct(task_logits.view(-1, task_num_labels),
-                                     task_labels.reshape([batch_size * seq_len, ]).type(torch.LongTensor).to(
-                                         labels.device))
+                task_labels = labels[:, 0, state["task_label_ind"], :]
+                state["task_label_ind"] += 1
+                task_loss = loss_fct(
+                    task_logits.view(-1, task_num_labels),
+                    task_labels.reshape(
+                        [
+                            batch_size * seq_len,
+                        ]
+                    )
+                    .type(torch.LongTensor)
+                    .to(labels.device),
+                )
             else:
                 if labels.ndim == 2:
                     task_labels = labels[:, 0]
@@ -318,22 +387,29 @@ class CnlpModelForClassification(PreTrainedModel):
                     task_labels = labels[:, 0, task_ind]
                 else:
                     raise NotImplementedError(
-                        'Have not implemented the case where a classification task '
-                        'is part of an MTL setup with relations and sequence tagging')
+                        "Have not implemented the case where a classification task "
+                        "is part of an MTL setup with relations and sequence tagging"
+                    )
 
-                state['task_label_ind'] += 1
-                task_loss = loss_fct(task_logits, task_labels.type(torch.LongTensor).to(labels.device))
+                state["task_label_ind"] += 1
+                task_loss = loss_fct(
+                    task_logits, task_labels.type(torch.LongTensor).to(labels.device)
+                )
 
-        if state['loss'] is None:
-            state['loss'] = task_loss
+        if state["loss"] is None:
+            state["loss"] = task_loss
         else:
-            task_weight = 1.0 if task_ind + 1 < len(self.num_labels) else self.final_task_weight
-            state['loss'] += (task_weight * task_loss)
+            task_weight = (
+                1.0 if task_ind + 1 < len(self.num_labels) else self.final_task_weight
+            )
+            state["loss"] += task_weight * task_loss
 
-    def apply_arg_reg(self,
-                      logits: List[torch.FloatTensor],
-                      attention_mask: torch.LongTensor,
-                      state: dict) -> None:
+    def apply_arg_reg(
+        self,
+        logits: List[torch.FloatTensor],
+        attention_mask: torch.LongTensor,
+        state: dict,
+    ) -> None:
         """
         Applies argument regularization to the logits for a single batch on all tasks.
 
@@ -376,9 +452,13 @@ class CnlpModelForClassification(PreTrainedModel):
         # then take the sign, if there are any -1s, the sum will be less than tx_threshold and the inner part will be < 0,
         # and relu will be 0. If there are no -1, the sum will be > tx_threshold and the innter part will be 1, relu also 1.
         prob_no_e1_type = relu(
-            torch.sign(probs_e1[:, :, 0].unsqueeze(2) - probs_e1[:, :, 1:]).sum(dim=2) - t1_threshold)
+            torch.sign(probs_e1[:, :, 0].unsqueeze(2) - probs_e1[:, :, 1:]).sum(dim=2)
+            - t1_threshold
+        )
         prob_no_e2_type = relu(
-            torch.sign(probs_e2[:, :, 0].unsqueeze(2) - probs_e2[:, :, 1:]).sum(dim=2) - t2_threshold)
+            torch.sign(probs_e2[:, :, 0].unsqueeze(2) - probs_e2[:, :, 1:]).sum(dim=2)
+            - t2_threshold
+        )
 
         prob_no_ent = prob_no_e1_type * prob_no_e2_type
 
@@ -392,7 +472,9 @@ class CnlpModelForClassification(PreTrainedModel):
         for name, value in kwargs.items():
             if name not in params and value is not None:
                 # Warn if a contentful parameter is not valid
-                logger.warning(f"Parameter {name} not present for encoder class {self.encoder.__class__.__name__}.")
+                logger.warning(
+                    f"Parameter {name} not present for encoder class {self.encoder.__class__.__name__}."
+                )
             elif name in params:
                 # Pass all, and only, parameters that are valid,
                 # regardless of whether they are None
@@ -449,29 +531,27 @@ class CnlpModelForClassification(PreTrainedModel):
             inputs_embeds=inputs_embeds,
             output_attentions=output_attentions,
             output_hidden_states=True,
-            return_dict=True
+            return_dict=True,
         )
 
-        outputs = self.encoder(
-            input_ids,
-            **kwargs
-        )
-        
-        batch_size,seq_len = input_ids.shape
+        outputs = self.encoder(input_ids, **kwargs)
+
+        batch_size, seq_len = input_ids.shape
 
         logits = []
 
-        state = dict(
-            loss=None,
-            task_label_ind=0
-        )
+        state = dict(loss=None, task_label_ind=0)
 
-        for task_ind,task_num_labels in enumerate(self.num_labels):
-            features = self.feature_extractors[task_ind](outputs.hidden_states, event_tokens)
+        for task_ind, task_num_labels in enumerate(self.num_labels):
+            features = self.feature_extractors[task_ind](
+                outputs.hidden_states, event_tokens
+            )
             if self.use_prior_tasks:
                 # note: this specific way of incorporating previous logits doesn't help in my experiments with thyme/clinical tempeval
                 if self.relations[task_ind]:
-                    features = self.predict_relations_with_previous_logits(features, logits)
+                    features = self.predict_relations_with_previous_logits(
+                        features, logits
+                    )
             task_logits = self.classifiers[task_ind](features)
             logits.append(task_logits)
 
@@ -483,15 +563,24 @@ class CnlpModelForClassification(PreTrainedModel):
                     task_num_labels,
                     batch_size,
                     seq_len,
-                    state
+                    state,
                 )
 
-        if len(self.num_labels) == 3 and self.relations[-1] and self.argument_regularization > 0:
+        if (
+            len(self.num_labels) == 3
+            and self.relations[-1]
+            and self.argument_regularization > 0
+        ):
             self.apply_arg_reg(logits, attention_mask, state)
 
         if self.training:
             return SequenceClassifierOutput(
-                loss=state['loss'], logits=logits, hidden_states=outputs.hidden_states, attentions=outputs.attentions,
+                loss=state["loss"],
+                logits=logits,
+                hidden_states=outputs.hidden_states,
+                attentions=outputs.attentions,
             )
         else:
-            return SequenceClassifierOutput(loss=state['loss'], logits=logits, attentions=outputs.attentions)
+            return SequenceClassifierOutput(
+                loss=state["loss"], logits=logits, attentions=outputs.attentions
+            )

@@ -11,7 +11,9 @@ def tabulate_report(report):
       Tabulated report with information about missing classes
     """
     class_specific_keys = {"f1", "recall", "precision", "support"}
-    class_specific_report = {k: v for k, v in report.items() if k in class_specific_keys}
+    class_specific_report = {
+        k: v for k, v in report.items() if k in class_specific_keys
+    }
     class_agnostic_report = {"acc": report["acc"]}
     headers = ["Score", *report["total_classes"]]
 

@@ -5,12 +5,12 @@ import logging
 import json
 
 from filelock import FileLock
-from typing import Callable, Dict, Optional, List, Union, Tuple
+from typing import Optional, List, Union, Tuple
 
 import numpy as np
 import torch
 from torch.utils.data.dataset import Dataset
-from transformers.data.processors.utils import DataProcessor, InputExample
+from transformers.data.processors.utils import InputExample
 from transformers.tokenization_utils import PreTrainedTokenizer
 from dataclasses import dataclass, field, asdict, astuple
 from enum import Enum
@@ -161,12 +161,12 @@ def cnlp_convert_features_to_hierarchical(
       int: pad_id: the tokenizer's ID representing the PAD token
       bool: insert_empty_chunk_at_beginning: whether to insert an
     empty chunk at the beginning of the instance
-      features: InputFeatures: 
-      chunk_len: int: 
-      num_chunks: int: 
-      cls_id: int: 
-      sep_id: int: 
-      pad_id: int: 
+      features: InputFeatures:
+      chunk_len: int:
+      num_chunks: int:
+      cls_id: int:
+      sep_id: int:
+      pad_id: int:
       insert_empty_chunk_at_beginning: bool:  (Default value = False)
       # cls_token_at_end:  (Default value = False)
       # sequence_a_segment_id:  (Default value = 0)
@@ -204,7 +204,7 @@ def cnlp_convert_features_to_hierarchical(
         """
 
         Args:
-          chunk: 
+          chunk:
           pad_type:  (Default value = pad_id)
 
         Returns:
@@ -218,7 +218,7 @@ def cnlp_convert_features_to_hierarchical(
         """
 
         Args:
-          chunk: 
+          chunk:
           cls_type:  (Default value = cls_id)
           sep_type:  (Default value = sep_id)
           pad_type:  (Default value = pad_id)
@@ -360,8 +360,8 @@ def cnlp_convert_examples_to_features(
     (equivalent in theory to a CLS chunk).
       bool: truncate_examples: whether to truncate the string representation
     of the example instances printed to the log
-      examples: List[InputExample]: 
-      tokenizer: PreTrainedTokenizer: 
+      examples: List[InputExample]:
+      tokenizer: PreTrainedTokenizer:
       max_length: Optional[int]:  (Default value = None)
       task: str:  (Default value = None)
       label_list: Optional[List[str]]:  (Default value = None)
@@ -398,7 +398,7 @@ def cnlp_convert_examples_to_features(
         """
 
         Args:
-          example: InputExample: 
+          example: InputExample:
 
         Returns:
 
@@ -503,7 +503,7 @@ def cnlp_convert_examples_to_features(
                             sent_labels[wpi, wpi2] = 0.0
 
                 for label in labels[sent_ind]:
-                    if not label[0] in tokeni_to_wpi or not label[1] in tokeni_to_wpi:
+                    if label[0] not in tokeni_to_wpi or label[1] not in tokeni_to_wpi:
                         out_of_bounds += 1
                         continue
 
@@ -578,8 +578,8 @@ def truncate_features(feature: Union[InputFeatures, HierarchicalInputFeatures]):
     Args:
       typing: Union[InputFeatures, HierarchicalInputFeatures] feature:
     the feature to represent
-      feature: Union[InputFeatures: 
-      HierarchicalInputFeatures]: 
+      feature: Union[InputFeatures:
+      HierarchicalInputFeatures]:
 
     Returns:
       the truncated representation of the feature
@@ -602,7 +602,7 @@ def summarize(li):
     """
 
     Args:
-      li: 
+      li:
 
     Returns:
 
@@ -616,8 +616,8 @@ def truncate_list_of_lists(li: Union[list, str]) -> Union[list, str]:
     """
 
     Args:
-      li: Union[list: 
-      str]: 
+      li: Union[list:
+      str]:
 
     Returns:
 
@@ -792,7 +792,6 @@ class ClinicalNlpDataset(Dataset):
             # and the others will use the cache.
             lock_path = cached_features_file + ".lock"
             with FileLock(lock_path):
-
                 if os.path.exists(cached_features_file) and not args.overwrite_cache:
                     start = time.time()
                     features = torch.load(cached_features_file)
@@ -864,9 +863,9 @@ class ClinicalNlpDataset(Dataset):
                 else:
                     assert len(features) == len(self.features)
                     if self.features[0].label is None:
-                        assert (
-                            features[0].label is None
-                        ), "Some of the tasks have None labels and others do not, they should be consistent!"
+                        assert features[0].label is None, (
+                            "Some of the tasks have None labels and others do not, they should be consistent!"
+                        )
                     else:
                         # we should have all non-label features be the same, so we can essentially discard subsequent
                         # datasets input features. So we'll append the labels from that features list and discard the duplicate input features.
