@@ -2,6 +2,7 @@ import os
 import re
 import torch
 import warnings
+from functools import partial
 
 from .cnlp_processors import (
     cnlp_processors,
@@ -142,7 +143,9 @@ def model_dicts(models_dir):
     return taggers_dict, out_model_dict
 
 
-def generate_paragraph_casoids(paragraphs, taggers_dict, axis_task):
+def generate_paragraph_casoids(
+    paragraphs, dictionary_dose_indices, taggers_dict, axis_task
+):
     """
 
     Args:
@@ -164,12 +167,14 @@ def generate_paragraph_casoids(paragraphs, taggers_dict, axis_task):
         Returns:
           Paragraph CASoid with NER mentions and annotated text windows
         """
-        return window_assemble(paragraph, taggers_dict, axis_task)
+        return window_assemble(
+            paragraph, dictionary_dose_indices, taggers_dict, axis_task
+        )
 
     return map(process, paragraphs)
 
 
-def window_assemble(paragraph, taggers_dict, axis_task):
+def window_assemble(paragraph, dictionary_dose_indices, taggers_dict, axis_task):
     """
 
     Args:
@@ -180,10 +185,12 @@ def window_assemble(paragraph, taggers_dict, axis_task):
     Returns:
       Paragraph and paragraph CASoid with NER mentions and annotated text windows
     """
-    return paragraph, get_window_dictionary(paragraph, taggers_dict, axis_task)
+    return paragraph, get_window_dictionary(
+        paragraph, dictionary_dose_indices, taggers_dict, axis_task
+    )
 
 
-def get_window_dictionary(paragraph, taggers_dict, axis_task):
+def get_window_dictionary(paragraph, dictionary_dose_indices, taggers_dict, axis_task):
     """
 
     Args:
@@ -197,9 +204,11 @@ def get_window_dictionary(paragraph, taggers_dict, axis_task):
 
     """
 
-    raw_dose_inds = get_dose_indices(paragraph, taggers_dict, axis_task)
+    raw_dose_inds = get_dose_indices(
+        paragraph, dictionary_dose_indices, taggers_dict, axis_task
+    )
 
-    paragraph_chunk_dose_pairs = [*filter(None, raw_dose_inds)]
+    paragraph_chunk_dose_pairs = list(filter(None, raw_dose_inds))
 
     def local_w_indices(chunk_dose_pair):
         """
@@ -268,7 +277,7 @@ def get_window_indices(chunk_indices, central_dose_indices):
     return (w_start, w_end), central_dose_indices
 
 
-def get_dose_indices(paragraph, taggers_dict, axis_task):
+def get_dose_indices(paragraph, dictionary_dose_indices, taggers_dict, axis_task):
     """
 
     Args:
@@ -289,7 +298,9 @@ def get_dose_indices(paragraph, taggers_dict, axis_task):
         Returns:
           List of indices of dose mentions within the chunk
         """
-        return get_chunk_dose_indices(chunk_indices, chunk, taggers_dict, axis_task)
+        return get_chunk_dose_indices(
+            chunk_indices, dictionary_dose_indices, chunk, taggers_dict, axis_task
+        )
 
     return chain.from_iterable(
         get_chunk_doses(chunk_indices, chunk)
@@ -297,18 +308,27 @@ def get_dose_indices(paragraph, taggers_dict, axis_task):
     )
 
 
-def get_chunk_dose_indices(chunk_indices, chunk, taggers_dict, axis_task):
-    """
+def overlap(t1: tuple[int, int], t2: tuple[int, int]) -> bool:
+    t1_begin, t1_end = t1
+    t2_begin, t2_end = t2
+    return t1_begin < t2_end and t2_begin < t1_end
 
-    Args:
-      chunk_indices:
-      chunk:
-      taggers_dict:
-      axis_task:
 
-    Returns:
+def merge_dose_indices(
+    model_dose_indices: Collection[tuple[int, int]],
+    dictionary_dose_indices: Collection[tuple[int, int]],
+) -> Collection[tuple[int, int]]:
+    all_offsets = set()
+    for offsets in dictionary_dose_indices:
+        is_overlap = partial(overlap, t1=offsets)
+        if not any(map(is_overlap, model_dose_indices)):
+            all_offsets.add(offsets)
+    return model_dose_indices.union(all_offsets)
 
-    """
+
+def get_chunk_dose_indices(
+    chunk_indices, dictionary_dose_indices, chunk, taggers_dict, axis_task
+):
     chunk_start, chunk_end = chunk_indices
     dose_model = taggers_dict[axis_task]
     filtered_chunk, filtered_inds = noncr_2_cr_inds(chunk)
@@ -318,14 +338,17 @@ def get_chunk_dose_indices(chunk_indices, chunk, taggers_dict, axis_task):
 
     raw_dose_chunk_indices = process_ann(chunk_ann)
 
-    dose_chunk_indices = [
+    dose_chunk_indices = {
         itemgetter(*dose_inds)(filtered_inds) for dose_inds in raw_dose_chunk_indices
-    ]
+    }
 
-    return [
+    return {
         ((chunk_start, chunk_end), (chunk_start + dose_start, chunk_start + dose_end))
-        for dose_start, dose_end in dose_chunk_indices
-    ]
+        for dose_start, dose_end in merge_dose_indices(
+            model_dose_indices=dose_chunk_indices,
+            dictionary_dose_indices=dictionary_dose_indices,
+        )
+    }
 
 
 def get_annotated_window_dict(
@@ -1150,7 +1173,7 @@ def get_predictions(
         return casoid_entity_print(out_dir, in_file, paragraph, casoid, label, idx)
 
     paragraphs_2_raw_casoids = generate_paragraph_casoids(
-        paragraphs, taggers_dict, axis_task
+        paragraphs, {}, taggers_dict, axis_task
     )
 
     paragraphs_2_classified_cassoids = [*map(classify_casoid, paragraphs_2_raw_casoids)]
