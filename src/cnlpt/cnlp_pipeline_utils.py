@@ -144,34 +144,20 @@ def model_dicts(models_dir):
 
 
 def generate_paragraph_casoids(
-    paragraphs, dictionary_dose_indices, taggers_dict, axis_task
+    paragraphs, dictionary_dose_indices_list, taggers_dict, axis_task
 ):
-    """
 
-    Args:
-      paragraphs: list of plaintext cTAKES tokenized paragraphs
-      taggers_dict: NER model dictionary
-      axis_task: NER task which is the anchor of all the relations
-
-    Returns:
-      list (iterable map object) of CAS-like (as in UIMA CAS) objects,
-      one per paragraph
-    """
-
-    def process(paragraph):
-        """
-
-        Args:
-          paragraph:
-
-        Returns:
-          Paragraph CASoid with NER mentions and annotated text windows
-        """
-        return window_assemble(
-            paragraph, dictionary_dose_indices, taggers_dict, axis_task
+    return [
+        window_assemble(
+            paragraph=paragraph,
+            dictionary_dose_indices=dictionary_dose_indices,
+            taggers_dict=taggers_dict,
+            axis_task=axis_task,
         )
-
-    return map(process, paragraphs)
+        for paragraph, dictionary_dose_indices in zip(
+            paragraphs, dictionary_dose_indices_list
+        )
+    ]
 
 
 def window_assemble(paragraph, dictionary_dose_indices, taggers_dict, axis_task):
