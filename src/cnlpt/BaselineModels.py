@@ -1,6 +1,6 @@
 import torch
-from torch import nn
 import torch.nn.functional as F
+from torch import nn
 
 
 class CnnSentenceClassifier(nn.Module):
@@ -17,7 +17,7 @@ class CnnSentenceClassifier(nn.Module):
         dropout=0.2,
         filters=(1, 2, 3),
     ):
-        super(CnnSentenceClassifier, self).__init__()
+        super().__init__()
         self.dropout = dropout
 
         self.embed = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embed_dims)
@@ -88,7 +88,7 @@ class LstmSentenceClassifier(nn.Module):
         dropout=0.2,
         hidden_size=100,
     ):
-        super(LstmSentenceClassifier, self).__init__()
+        super().__init__()
         self.dropout = dropout
 
         self.embed = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embed_dims)

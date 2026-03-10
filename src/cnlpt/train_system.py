@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright 2018 The Google AI Language Team Authors and The HuggingFace Inc. team.
 # Copyright (c) 2018, NVIDIA CORPORATION.  All rights reserved.
 #
@@ -16,58 +15,51 @@
 """Finetuning the library models for sequence classification on clinical NLP tasks"""
 
 import logging
-import os
-from os.path import join, exists
-import sys
-from dataclasses import dataclass, field
-from typing import Callable, Dict, Optional, List
-import tempfile
 import math
-
-
+import os
+import sys
+import tempfile
 from collections import defaultdict
+from dataclasses import dataclass, field
+from os.path import exists, join
+from typing import Callable, Optional
+
 import numpy as np
-from seqeval.metrics.sequence_labeling import get_entities
-
-import torch
-from transformers import (
-    AutoConfig,
-    AutoTokenizer,
-    AutoModel,
-    EvalPrediction,
-    SchedulerType,
-    get_cosine_with_hard_restarts_schedule_with_warmup,
-    get_cosine_schedule_with_warmup,
-    get_linear_schedule_with_warmup,
-    TrainerCallback,
-)
-from transformers.training_args import IntervalStrategy
-from transformers import ALL_PRETRAINED_CONFIG_ARCHIVE_MAP
-from transformers.optimization import AdamW
-from transformers.file_utils import hf_bucket_url, CONFIG_NAME
-
-from .cnlp_processors import (
-    cnlp_processors,
-    cnlp_output_modes,
-    cnlp_compute_metrics,
-    tagging,
-    relex,
-    classification,
-)
-from .cnlp_data import ClinicalNlpDataset, DataTrainingArguments
-
-from .CnlpModelForClassification import CnlpModelForClassification, CnlpConfig
-from .BaselineModels import CnnSentenceClassifier, LstmSentenceClassifier
-from .HierarchicalTransformer import HierarchicalModel, HierarchicalTransformerConfig
-
 import requests
-
+import torch
+from seqeval.metrics.sequence_labeling import get_entities
 from transformers import (
+    ALL_PRETRAINED_CONFIG_ARCHIVE_MAP,
+    AutoConfig,
+    AutoModel,
+    AutoTokenizer,
+    EvalPrediction,
     HfArgumentParser,
+    SchedulerType,
     Trainer,
+    TrainerCallback,
     TrainingArguments,
+    get_cosine_schedule_with_warmup,
+    get_cosine_with_hard_restarts_schedule_with_warmup,
+    get_linear_schedule_with_warmup,
     set_seed,
 )
+from transformers.file_utils import CONFIG_NAME, hf_bucket_url
+from transformers.optimization import AdamW
+from transformers.training_args import IntervalStrategy
+
+from .BaselineModels import CnnSentenceClassifier, LstmSentenceClassifier
+from .cnlp_data import ClinicalNlpDataset, DataTrainingArguments
+from .cnlp_processors import (
+    classification,
+    cnlp_compute_metrics,
+    cnlp_output_modes,
+    cnlp_processors,
+    relex,
+    tagging,
+)
+from .CnlpModelForClassification import CnlpConfig, CnlpModelForClassification
+from .HierarchicalTransformer import HierarchicalModel, HierarchicalTransformerConfig
 
 cnlpt_models = ["cnn", "lstm", "hier", "cnlpt"]
 
@@ -279,7 +271,7 @@ class ModelArguments:
         },
     )
 
-    cnn_filter_sizes: Optional[List[int]] = field(
+    cnn_filter_sizes: Optional[list[int]] = field(
         default_factory=lambda: [1, 2, 3],
         metadata={
             "help": (
@@ -444,18 +436,11 @@ def main(json_file=None, json_obj=None):
         level=logging.INFO if training_args.local_rank in [-1, 0] else logging.WARN,
     )
     logger.warning(
-        "Process rank: %s, device: %s, n_gpu: %s, distributed training: %s, 16-bits training: %s"
-        % (
-            training_args.local_rank,
-            training_args.device,
-            training_args.n_gpu,
-            bool(training_args.local_rank != -1),
-            training_args.fp16,
-        )
+        f"Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu}, distributed training: {bool(training_args.local_rank != -1)}, 16-bits training: {training_args.fp16}"
     )
-    logger.info("Training/evaluation parameters %s" % training_args)
-    logger.info("Data parameters %s" % data_args)
-    logger.info("Model parameters %s" % model_args)
+    logger.info(f"Training/evaluation parameters {training_args}")
+    logger.info(f"Data parameters {data_args}")
+    logger.info(f"Model parameters {model_args}")
     # Set seed
     set_seed(training_args.seed)
 
@@ -485,7 +470,7 @@ def main(json_file=None, json_obj=None):
                 relations.append(cnlp_output_modes[task_name] == relex)
 
     except KeyError:
-        raise ValueError("Task not found: %s" % (data_args.task_name))
+        raise ValueError(f"Task not found: {data_args.task_name}")
 
     # Load tokenizer: Need this first for loading the datasets
     tokenizer = AutoTokenizer.from_pretrained(
@@ -758,7 +743,7 @@ def main(json_file=None, json_obj=None):
         )
         with open(output_eval_file, "a") as writer:
             writer.write(
-                (
+                
                     "Training parameters:\n\n"
                     f"Training set size {len(train_dataset)}\n"
                     f"Batch size {training_args.train_batch_size}\n"
@@ -767,7 +752,7 @@ def main(json_file=None, json_obj=None):
                     "------------------------------"
                     f"Projected training epochs: {training_args.num_train_epochs}\n"
                     f"actual_steps: {training_args.max_steps}"
-                )
+                
             )
         if training_args.evals_per_epoch > 0:
             logger.warning(
@@ -781,12 +766,12 @@ def main(json_file=None, json_obj=None):
             # training_args.save_strategy = IntervalStrategy.EPOCH
             with open(output_eval_file, "a") as writer:
                 writer.write(
-                    (
+                    
                         "Eval arguments:\n\n"
                         f"Steps per epoch: {steps_per_epoch}\n"
                         f"Evals per epoch: {training_args.evals_per_epoch}\n"
                         f"Eval steps: {training_args.eval_steps}\n\n"
-                    )
+                    
                 )
         elif training_args.do_eval:
             if training_args.actual_steps < 0 and training_args.actual_epochs < 0:
@@ -806,8 +791,8 @@ def main(json_file=None, json_obj=None):
                 training_args.evaluation_strategy = IntervalStrategy.STEPS
 
     def build_compute_metrics_fn(
-        task_names: List[str], model
-    ) -> Callable[[EvalPrediction], Dict]:
+        task_names: list[str], model
+    ) -> Callable[[EvalPrediction], dict]:
         """
 
         Args:
@@ -893,14 +878,14 @@ def main(json_file=None, json_obj=None):
                         for task_ind, task_name in enumerate(metrics):
                             with open(output_eval_file, "a") as writer:
                                 logger.info(
-                                    "***** Eval results for task %s *****" % (task_name)
+                                    f"***** Eval results for task {task_name} *****"
                                 )
                                 writer.write(
                                     f"\n\n***** Eval results for task {task_name} *****\n\n"
                                 )
                                 for key, value in metrics[task_name].items():
                                     logger.info("  %s = %s", key, value)
-                                    writer.write("%s = %s\n" % (key, value))
+                                    writer.write(f"{key} = {value}\n")
                                 if any(eval_state):
                                     writer.write(
                                         "\n\n Current state (In Compute Metrics Function) \n\n"
@@ -934,11 +919,11 @@ def main(json_file=None, json_obj=None):
     if training_args.lr_scheduler_type == SchedulerType["COSINE_WITH_RESTARTS"]:
         num_cycles = int(training_args.num_train_epochs / 3)
         logger.info(
-            (
+            
                 f"Build custom optimizer: AdamW + cosine_with_hard_restarts_schedule_with_warmup."
                 f"num_cycles: {num_cycles}; num_warmup_steps: {num_warmup_steps}; num_training_steps: "
                 f"{num_training_steps}."
-            )
+            
         )
         scheduler = get_cosine_with_hard_restarts_schedule_with_warmup(
             optimizer=optimizer,
@@ -950,11 +935,11 @@ def main(json_file=None, json_obj=None):
     elif training_args.lr_scheduler_type == SchedulerType["COSINE"]:
         num_cycles = training_args.num_train_epochs / 6
         logger.info(
-            (
+            
                 f"Build custom optimizer: AdamW + cosine_schedule_with_warmup. "
                 f"num_cycles: {num_cycles}; num_warmup_steps: {num_warmup_steps}; num_training_steps: "
                 f"{num_training_steps}."
-            )
+            
         )
         scheduler = get_cosine_schedule_with_warmup(
             optimizer=optimizer,
@@ -967,10 +952,10 @@ def main(json_file=None, json_obj=None):
     elif training_args.lr_scheduler_type == SchedulerType["LINEAR"]:
         num_cycles = 0
         logger.info(
-            (
+            
                 f"Build custom optimizer: AdamW + linear_schedule_with_warmup. "
                 f"num_warmup_steps: {num_warmup_steps}; num_training_steps: {num_training_steps}."
-            )
+            
         )
         scheduler = get_linear_schedule_with_warmup(
             optimizer=optimizer,
@@ -1065,7 +1050,7 @@ def main(json_file=None, json_obj=None):
                 logger.info("***** Eval results *****")
                 for key, value in eval_result.items():
                     logger.info("  %s = %s", key, value)
-                    writer.write("%s = %s\n" % (key, value))
+                    writer.write(f"{key} = {value}\n")
                 if any(eval_state):
                     writer.write("\n\n Current state (In do_eval (End?)) \n\n")
                     for key, value in eval_state.items():
@@ -1116,8 +1101,7 @@ def main(json_file=None, json_obj=None):
                         task_predictions = np.argmax(predictions[task_ind], axis=3)
                         task_labels = dataset_labels[task_ind]
                         assert task_labels[0] == "None", (
-                            'The first labeled relation category should always be "None" but for task %s it is %s'
-                            % (task_names[task_ind], task_labels[0])
+                            f'The first labeled relation category should always be "None" but for task {task_names[task_ind]} it is {task_labels[0]}'
                         )
 
                         for inst_ind in range(task_predictions.shape[0]):
@@ -1168,7 +1152,7 @@ def main(json_file=None, json_obj=None):
                     logger.info("***** Test results *****")
                     for index, item in enumerate(task_predictions):
                         item = test_dataset.get_labels()[task_ind][item]
-                        writer.write("%s\n" % (item))
+                        writer.write(f"{item}\n")
 
     return eval_results
 

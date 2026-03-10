@@ -1,30 +1,23 @@
 import os
-import sys
-import numpy as np
 import shutil
-
-from typing import Optional
+import sys
+from collections import defaultdict
 from dataclasses import dataclass, field
+from operator import itemgetter
+from typing import Optional
+
+import numpy as np
+from tabulate import tabulate
+from transformers import AutoConfig, AutoModel, HfArgumentParser
 
 from .cnlp_pipeline_utils import (
-    model_dicts,
-    get_sentences_and_labels,
     get_predictions,
+    get_sentences_and_labels,
+    model_dicts,
 )
-
 from .cnlp_processors import classifier_to_relex, cnlp_compute_metrics, cnlp_processors
-
-from .CnlpModelForClassification import CnlpModelForClassification, CnlpConfig
-
+from .CnlpModelForClassification import CnlpConfig, CnlpModelForClassification
 from .formatting import tabulate_report
-
-from tabulate import tabulate
-
-from collections import defaultdict
-
-from operator import itemgetter
-
-from transformers import AutoConfig, AutoModel, HfArgumentParser
 
 modes = ["inf", "eval"]
 
@@ -273,7 +266,7 @@ def evaluation(pipeline_args):
 
     print("models loaded")
 
-    task_processor = cnlp_processors[classifier_to_relex[[*out_model_dict.keys()][0]]]()
+    task_processor = cnlp_processors[classifier_to_relex[next(iter(out_model_dict.keys()))]]()
     label_list = task_processor.get_labels()
     actual_labels = set()
     label_map = {label: i for i, label in enumerate(label_list)}
@@ -284,7 +277,7 @@ def evaluation(pipeline_args):
         shutil.rmtree(pipeline_args.out_dir, ignore_errors=True)
         os.makedirs(pipeline_args.out_dir)
 
-    document_cumulative_dict = defaultdict(lambda: defaultdict(lambda: []))
+    document_cumulative_dict = defaultdict(lambda: defaultdict(list))
 
     file_list = (
         [
@@ -343,7 +336,7 @@ def evaluation(pipeline_args):
         if not os.path.exists(note_dir):
             os.makedirs(note_dir)
 
-        out_task, doc_labels_map = [*idx_labels_dict.items()][0]
+        out_task, doc_labels_map = next(iter(idx_labels_dict.items()))
 
         def fix_gold(label_list):
             """
@@ -438,7 +431,7 @@ def evaluation(pipeline_args):
 
         out_file = os.path.join(note_dir, out_fn)
         ordered_metrics[file_idx] = note_identifier + "\n\n" + report_str
-        with open(out_file, "wt") as out_writer:
+        with open(out_file, "w") as out_writer:
             out_writer.write(report_str)
 
     if dir_mode:
@@ -486,7 +479,7 @@ def evaluation(pipeline_args):
             out_fn = "split_metrics.txt"
 
             out_file = os.path.join(pipeline_args.out_dir, out_fn)
-            with open(out_file, "wt") as out_writer:
+            with open(out_file, "w") as out_writer:
                 out_writer.write("INSTANCE AVERAGED RESULTS OVER THE SPLIT\n\n")
                 out_writer.write(report_str)
 

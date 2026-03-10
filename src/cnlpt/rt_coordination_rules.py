@@ -1,5 +1,6 @@
-from .pipelines import ctakes_tok
 from itertools import chain, filterfalse, groupby
+
+from .pipelines import ctakes_tok
 
 
 def unhash_uniq(ls):
@@ -35,7 +36,7 @@ def admit_rel(label, src_dose, trg_dose):
       or None if there are issues
     """
     try:
-        sig_span = [*filter(lambda s: s != src_dose, label[:2])][0]
+        sig_span = next(filter(lambda s: s != src_dose, label[:2]))
     except Exception as e:
         print(f"{e} with {label} {src_dose} {trg_dose}")
         return None

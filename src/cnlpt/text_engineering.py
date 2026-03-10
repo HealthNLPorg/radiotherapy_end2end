@@ -1,12 +1,11 @@
 import operator
 import re
-
+from collections import defaultdict, deque
 from enum import Enum
 from heapq import merge
+from itertools import accumulate, combinations, groupby, tee
 
 from .pipelines import ctakes_tok
-from collections import defaultdict, deque
-from itertools import accumulate, combinations, groupby, tee
 
 
 class ChunkType(Enum):
@@ -113,7 +112,7 @@ def noncr_2_cr_inds(chunk):
         tok, _ = tok_pair
         return tok.strip() != "<cr>"
 
-    tok_ind_pairs = [*filter(non_cr, zip(tokens, range(0, len(tokens))))]
+    tok_ind_pairs = [*filter(non_cr, zip(tokens, range(len(tokens))))]
 
     if not any(tok_ind_pairs):
         return None, None
@@ -223,7 +222,7 @@ def get_intersect(ls1, ls2):
     out = []
     for v, g in groupby(zip(m1, m2), lambda k: k[0][1] < k[1][0]):
         if not v:
-            ls = [*g][0]
+            ls = next(iter(g))
             inf = max(i[0] for i in ls)
             sup = min(i[1] for i in ls)
             # if inf != sup:

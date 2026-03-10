@@ -4,19 +4,18 @@ Module containing the CNLP transformer model.
 
 # from transformers.models.auto import  AutoModel, AutoConfig
 import inspect
-from typing import Optional, List, Any, Dict
-
-from transformers import AutoModel, AutoConfig
-from transformers.modeling_utils import PreTrainedModel
-from transformers.configuration_utils import PretrainedConfig
+import logging
+import math
+from typing import Any, Optional
 
 import torch
 from torch import nn
-import logging
 from torch.nn import CrossEntropyLoss, MSELoss
+from torch.nn.functional import relu, softmax
+from transformers import AutoConfig, AutoModel
+from transformers.configuration_utils import PretrainedConfig
 from transformers.modeling_outputs import SequenceClassifierOutput
-from torch.nn.functional import softmax, relu
-import math
+from transformers.modeling_utils import PreTrainedModel
 
 logger = logging.getLogger(__name__)
 
@@ -210,7 +209,7 @@ class CnlpModelForClassification(PreTrainedModel):
         self,
         config: config_class,
         *,
-        class_weights: Optional[List[float]] = None,
+        class_weights: Optional[list[float]] = None,
         final_task_weight: float = 1.0,
         argument_regularization: float = -1,
         freeze=False,
@@ -307,13 +306,12 @@ class CnlpModelForClassification(PreTrainedModel):
                         (features, aug), 3
                     )  # concatenate the  relation matrix with the sequence matrix
                 else:
-                    logging.warn(
-                        "It is not implemented to add a task of shape %s to a relation matrix"
-                        % (str(prior_task_logits.shape))
+                    logging.warning(
+                        f"It is not implemented to add a task of shape {prior_task_logits.shape!s} to a relation matrix"
                     )
             elif len(features.shape) == 3:
                 # sequence
-                logging.warn(
+                logging.warning(
                     "It is not implemented to add previous task of any type to a sequence task"
                 )
 
@@ -406,7 +404,7 @@ class CnlpModelForClassification(PreTrainedModel):
 
     def apply_arg_reg(
         self,
-        logits: List[torch.FloatTensor],
+        logits: list[torch.FloatTensor],
         attention_mask: torch.LongTensor,
         state: dict,
     ) -> None:
@@ -466,7 +464,7 @@ class CnlpModelForClassification(PreTrainedModel):
 
         state["loss"] += self.argument_regularization * prob_rel_no_ent.sum()
 
-    def generalize_encoder_forward_kwargs(self, **kwargs: Any) -> Dict[str, Any]:
+    def generalize_encoder_forward_kwargs(self, **kwargs: Any) -> dict[str, Any]:
         new_kwargs = dict()
         params = inspect.signature(self.encoder.forward).parameters
         for name, value in kwargs.items():

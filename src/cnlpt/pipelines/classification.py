@@ -1,14 +1,13 @@
-from typing import Optional, Dict
+from typing import Optional
 
 import numpy as np
-
-from transformers.utils import ExplicitEnum, add_end_docstrings
+from transformers.data.processors.utils import DataProcessor
 from transformers.pipelines.base import (
     PIPELINE_INIT_ARGS,
     GenericTensor,
     Pipeline,
 )
-from transformers.data.processors.utils import DataProcessor
+from transformers.utils import ExplicitEnum, add_end_docstrings
 
 from .__init__ import ctakes_tok
 
@@ -171,7 +170,7 @@ class ClassificationPipeline(Pipeline):
         else:
             return result
 
-    def preprocess(self, inputs, **tokenizer_kwargs) -> Dict[str, GenericTensor]:
+    def preprocess(self, inputs, **tokenizer_kwargs) -> dict[str, GenericTensor]:
         """
 
         Args:

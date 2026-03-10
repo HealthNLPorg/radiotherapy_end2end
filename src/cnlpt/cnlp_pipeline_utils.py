@@ -1,34 +1,30 @@
 import os
 import re
-import torch
 import warnings
+from collections import Counter
+from collections.abc import Collection
 from functools import partial
+from itertools import chain, zip_longest
+from operator import itemgetter
 
-from .cnlp_processors import (
-    cnlp_processors,
-    cnlp_output_modes,
-    tagging,
-    classification,
-    classifier_to_relex,
-    axis_tags,
-    signature_tags,
-)
-
-from .pipelines.tagging import TaggingPipeline
-from .pipelines.classification import ClassificationPipeline
-from .pipelines import ctakes_tok
-
-from .CnlpModelForClassification import CnlpModelForClassification
-
-from .text_engineering import get_chunks, get_date_links, get_intersect, noncr_2_cr_inds
-from .rt_coordination_rules import filter_and_extrapolate_labels
-
+import torch
 from transformers import AutoConfig, AutoTokenizer
 
-from collections.abc import Collection
-from operator import itemgetter
-from collections import Counter
-from itertools import chain, zip_longest
+from .cnlp_processors import (
+    axis_tags,
+    classification,
+    classifier_to_relex,
+    cnlp_output_modes,
+    cnlp_processors,
+    signature_tags,
+    tagging,
+)
+from .CnlpModelForClassification import CnlpModelForClassification
+from .pipelines import ctakes_tok
+from .pipelines.classification import ClassificationPipeline
+from .pipelines.tagging import TaggingPipeline
+from .rt_coordination_rules import filter_and_extrapolate_labels
+from .text_engineering import get_chunks, get_date_links, get_intersect, noncr_2_cr_inds
 
 SPECIAL_TOKENS = [
     "<e>",
@@ -71,7 +67,7 @@ def model_dicts(models_dir):
     """
     # Pipelines go to CPU (-1) by default so if
     # available send to GPU (0)
-    main_device = 0 if torch.cuda.is_available() else -1
+    0 if torch.cuda.is_available() else -1
 
     taggers_dict = {}
     out_model_dict = {}
@@ -90,7 +86,7 @@ def model_dicts(models_dir):
             model = CnlpModelForClassification.from_pretrained(
                 model_dir,
                 config=config,
-                device_map="meta",  # TODO see if this helps
+                # device_map="meta",  # TODO see if this helps
             )
 
             tokenizer = AutoTokenizer.from_pretrained(
@@ -113,7 +109,7 @@ def model_dicts(models_dir):
                     model=model,
                     tokenizer=tokenizer,
                     task_processor=task_processor,
-                    device=main_device,
+                    # device=main_device,
                     # Just get rid of it
                     # batch_size=batch_size,
                 )
@@ -126,7 +122,7 @@ def model_dicts(models_dir):
                     tokenizer=tokenizer,
                     return_all_scores=True,
                     task_processor=task_processor,
-                    device=main_device,
+                    # device=main_device,
                     # this is done one by one anyway...
                     # batch_size=batch_size,
                 )
@@ -135,11 +131,11 @@ def model_dicts(models_dir):
             # not supported for now since I wasn't sure how to fit them in
             else:
                 ValueError(
-                    (
+                    
                         "output mode "
                         f"{cnlp_output_modes[task_name]}"
                         "not currently supported"
-                    )
+                    
                 )
     return taggers_dict, out_model_dict
 
@@ -147,7 +143,6 @@ def model_dicts(models_dir):
 def generate_paragraph_casoids(
     paragraphs, dictionary_dose_indices_list, taggers_dict, axis_task
 ):
-
     return [
         window_assemble(
             paragraph=paragraph,
@@ -487,14 +482,14 @@ def merge_annotations(axis_span, axis_task, sig_span, sig_task, window, window_i
     intersects = get_intersect([(a1, a2)], [(s1, s2)])
     if intersects:
         warnings.warn(
-            (
+            
                 f"Warning axis annotation and sig annotation \n"
                 f"{ref_sent}\n"
                 f"{a1, a2}\n"
                 f"{s1, s2}\n"
                 f"Have intersections at span:\n"
                 f"{intersects}"
-            )
+            
         )
 
     ann_sent[s1] = sig_tag_begin + " " + ref_sent[s1]
@@ -1067,7 +1062,7 @@ def casoid_entity_print(parent_dir, filename, paragraph, casoid, label_tuples, i
         ]
     )
     out_file = os.path.join(note_dir, out_fn)
-    with open(out_file, "at") as out_writer:
+    with open(out_file, "a") as out_writer:
         out_writer.write(f"{idx + 1}.\n\n")
         out_writer.write(f"Relation type counts:\n{relation_counts_str}")
         out_writer.write("\n\n")

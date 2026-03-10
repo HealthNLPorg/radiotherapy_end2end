@@ -1,37 +1,26 @@
 import os
-import torch
 import sys
-
-from typing import Optional
-from dataclasses import dataclass, field
-
-
-from .cnlp_processors import (
-    cnlp_processors,
-    cnlp_output_modes,
-    tagging,
-    classification,
-    cnlp_compute_metrics,
-)
-
-from .pipelines.tagging import TaggingPipeline
-from .pipelines.classification import ClassificationPipeline
-
-
-from .CnlpModelForClassification import CnlpModelForClassification, CnlpConfig
-
-from .formatting import tabulate_report
-
-from tabulate import tabulate
-
 from collections import defaultdict
-
+from dataclasses import dataclass, field
 from itertools import chain
-
 from operator import itemgetter
+from typing import Optional
 
+import torch
+from tabulate import tabulate
 from transformers import AutoConfig, AutoModel, AutoTokenizer, HfArgumentParser
 
+from .cnlp_processors import (
+    classification,
+    cnlp_compute_metrics,
+    cnlp_output_modes,
+    cnlp_processors,
+    tagging,
+)
+from .CnlpModelForClassification import CnlpConfig, CnlpModelForClassification
+from .formatting import tabulate_report
+from .pipelines.classification import ClassificationPipeline
+from .pipelines.tagging import TaggingPipeline
 
 SPECIAL_TOKENS = [
     "<e>",
@@ -152,7 +141,7 @@ def get_model(model_dir, task_name):
             device=main_device,
         )
     else:
-        ValueError((f"bad mode: {task_name}"))
+        ValueError(f"bad mode: {task_name}")
 
 
 def get_sentences_and_labels(in_file: str, task_name: str):
@@ -188,7 +177,7 @@ def get_sentences_and_labels(in_file: str, task_name: str):
         labels = [label_map[example.label] for example in examples]
     else:
         labels = None
-        ValueError((f"bad mode: {task_name}"))
+        ValueError(f"bad mode: {task_name}")
     return sentences, labels
 
 
@@ -218,8 +207,8 @@ def model_eval(eval_args):
 
     mode, pipeline = get_model(eval_args.model_dir, eval_args.task_name)
 
-    re_document_cumulative_dict = defaultdict(lambda: defaultdict(lambda: []))
-    ner_document_cumulative_dict = defaultdict(lambda: [])
+    re_document_cumulative_dict = defaultdict(lambda: defaultdict(list))
+    ner_document_cumulative_dict = defaultdict(list)
 
     task_processor = cnlp_processors[eval_args.task_name]()
     label_map = {label: i for i, label in enumerate(task_processor.get_labels())}

@@ -2,18 +2,18 @@
 Module containing the Hierarchical Transformer module, adapted from Xin Su.
 """
 
-import logging
 import copy
+import logging
 import random
-from typing import Optional, List
+from typing import Optional
 
 import numpy as np
-from torch import nn
-import torch.nn.functional as F
 import torch
+import torch.nn.functional as F
+from torch import nn
 from transformers.modeling_outputs import SequenceClassifierOutput
 
-from .CnlpModelForClassification import CnlpModelForClassification, CnlpConfig
+from .CnlpModelForClassification import CnlpConfig, CnlpModelForClassification
 
 logger = logging.getLogger(__name__)
 
@@ -210,7 +210,7 @@ class EncoderLayer(nn.Module):
     """
 
     def __init__(self, d_model, d_inner, n_head, d_k, d_v, dropout=0.1):
-        super(EncoderLayer, self).__init__()
+        super().__init__()
         self.slf_attn = MultiHeadAttention(n_head, d_model, d_k, d_v, dropout=dropout)
         self.pos_ffn = PositionwiseFeedForward(d_model, d_inner, dropout=dropout)
 
@@ -231,7 +231,7 @@ class EncoderLayer(nn.Module):
         return enc_output, enc_slf_attn
 
 
-class HierarchicalTransformerConfig(object):
+class HierarchicalTransformerConfig:
     """Config object for hierarchical transformer's document-level encoder layers
 
     Original author: Xin Su (https://github.com/xinsu626/DocTransformer)
@@ -285,13 +285,13 @@ class HierarchicalModel(CnlpModelForClassification):
         config: config_class,
         transformer_head_config: HierarchicalTransformerConfig,
         *,
-        class_weights: Optional[List[float]] = None,
+        class_weights: Optional[list[float]] = None,
         final_task_weight: float = 1.0,
         argument_regularization: float = -1,
         freeze: bool = False,
     ):
         # Initialize common components
-        super(HierarchicalModel, self).__init__(
+        super().__init__(
             config,
             class_weights=class_weights,
             final_task_weight=final_task_weight,

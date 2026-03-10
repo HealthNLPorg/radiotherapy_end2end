@@ -2,8 +2,9 @@ import re
 
 # from .pipelines import ctakes_tok
 from collections import deque
-from transitions import Machine
 from itertools import chain
+
+from transitions import Machine
 
 
 # ipython
@@ -139,7 +140,7 @@ short_months = {
 }
 
 
-class NumericDateDetector(object):
+class NumericDateDetector:
     """ """
 
     states = [
@@ -305,7 +306,7 @@ class NumericDateDetector(object):
         return self.indices
 
 
-class TextDateDetector(object):
+class TextDateDetector:
     """ """
 
     states = [

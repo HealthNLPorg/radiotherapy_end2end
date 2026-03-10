@@ -48,7 +48,6 @@ def warn(*args, **kwargs):
     Returns:
 
     """
-    pass
 
 
 import warnings
@@ -56,21 +55,27 @@ import warnings
 warnings.warn = warn
 
 
-import sklearn
-import logging
 import json
-
+import logging
 from itertools import chain
-from transformers.data.processors.utils import DataProcessor, InputExample
-from transformers.data.metrics import simple_accuracy
-from sklearn.metrics import f1_score, recall_score, precision_score
+
 import numpy as np
+import sklearn
+from seqeval.metrics import (
+    classification_report as seq_cls,
+)
 from seqeval.metrics import (
     f1_score as seq_f1,
-    classification_report as seq_cls,
+)
+from seqeval.metrics import (
     precision_score as seq_prec,
+)
+from seqeval.metrics import (
     recall_score as seq_rec,
 )
+from sklearn.metrics import f1_score, precision_score, recall_score
+from transformers.data.metrics import simple_accuracy
+from transformers.data.processors.utils import DataProcessor, InputExample
 
 logger = logging.getLogger(__name__)
 
@@ -427,7 +432,7 @@ def cnlp_compute_metrics(task_name, preds, labels):
     elif task_name == "rt_end2end":
         return pipeline_relation_metrics(task_name, preds, labels)
     elif cnlp_output_modes[task_name] == classification:
-        logger.warn(
+        logger.warning(
             "Choosing accuracy and f1 as default metrics; modify cnlp_compute_metrics() to customize for this task."
         )
         return acc_and_f1(preds, labels)
@@ -560,7 +565,7 @@ class CnlpProcessor(DataProcessor):
         test_mode = set_type == "test"
         examples = []
         for i, line in enumerate(lines):
-            guid = "%s-%s" % (set_type, i)
+            guid = f"{set_type}-{i}"
             if test_mode:
                 # Some test sets have labels and some do not. discard the label if it has it but have to check so
                 # we know which part of the line has the data.
@@ -1515,7 +1520,6 @@ class MTLClassifierProcessor(DataProcessor):
           the value of the classifier ID
 
         """
-        pass
 
     def get_default_label(self):
         """Get the default label to assign to unlabeled instances in the dataset.
@@ -1526,7 +1530,6 @@ class MTLClassifierProcessor(DataProcessor):
           the value of the default label
 
         """
-        pass
 
     def get_example_from_tensor_dict(self, tensor_dict):
         """Not used.
@@ -1605,11 +1608,11 @@ class MTLClassifierProcessor(DataProcessor):
         """
         examples = []
 
-        with open(fn, "rt") as f:
+        with open(fn) as f:
             data = json.load(f)
 
         for inst_id, instance in data.items():
-            guid = "%s-%s" % (self.get_classifier_id(), inst_id)
+            guid = f"{self.get_classifier_id()}-{inst_id}"
             text_a = instance["text"]
             label_dict = instance["labels"]
             labels = [
