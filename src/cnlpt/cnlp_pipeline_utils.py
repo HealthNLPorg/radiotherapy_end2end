@@ -90,6 +90,7 @@ def model_dicts(models_dir):
             model = CnlpModelForClassification.from_pretrained(
                 model_dir,
                 config=config,
+                device_map="meta",  # TODO see if this helps
             )
 
             tokenizer = AutoTokenizer.from_pretrained(
