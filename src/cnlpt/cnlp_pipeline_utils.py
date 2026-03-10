@@ -25,7 +25,7 @@ from .rt_coordination_rules import filter_and_extrapolate_labels
 
 from transformers import AutoConfig, AutoTokenizer
 
-
+from collections.abc import Collection
 from operator import itemgetter
 from collections import Counter
 from itertools import chain, zip_longest
