@@ -22,10 +22,8 @@ class TaggingArgumentHandler(ArgumentHandler):
             inputs = list(inputs)
         elif isinstance(inputs, str):
             inputs = [inputs]
-        elif (
-            (Dataset is not None
-            and isinstance(inputs, Dataset))
-            or isinstance(inputs, types.GeneratorType)
+        elif (Dataset is not None and isinstance(inputs, Dataset)) or isinstance(
+            inputs, types.GeneratorType
         ):
             return inputs, None
         else:

@@ -3,7 +3,6 @@ import re
 import warnings
 from collections import Counter
 from collections.abc import Collection
-from functools import partial
 from itertools import chain, zip_longest
 from operator import itemgetter
 
@@ -131,11 +130,7 @@ def model_dicts(models_dir):
             # not supported for now since I wasn't sure how to fit them in
             else:
                 ValueError(
-                    
-                        "output mode "
-                        f"{cnlp_output_modes[task_name]}"
-                        "not currently supported"
-                    
+                    f"output mode {cnlp_output_modes[task_name]}not currently supported"
                 )
     return taggers_dict, out_model_dict
 
@@ -302,8 +297,10 @@ def merge_dose_indices(
 ) -> Collection[tuple[int, int]]:
     all_offsets = set()
     for offsets in dictionary_dose_indices:
-        is_overlap = partial(overlap, t1=offsets)
-        if not any(map(is_overlap, model_dose_indices)):
+        if not any(
+            overlap(t1=offsets, t2=model_offsets)
+            for model_offsets in model_dose_indices
+        ):
             all_offsets.add(offsets)
     return model_dose_indices.union(all_offsets)
 
@@ -482,14 +479,12 @@ def merge_annotations(axis_span, axis_task, sig_span, sig_task, window, window_i
     intersects = get_intersect([(a1, a2)], [(s1, s2)])
     if intersects:
         warnings.warn(
-            
-                f"Warning axis annotation and sig annotation \n"
-                f"{ref_sent}\n"
-                f"{a1, a2}\n"
-                f"{s1, s2}\n"
-                f"Have intersections at span:\n"
-                f"{intersects}"
-            
+            f"Warning axis annotation and sig annotation \n"
+            f"{ref_sent}\n"
+            f"{a1, a2}\n"
+            f"{s1, s2}\n"
+            f"Have intersections at span:\n"
+            f"{intersects}"
         )
 
     ann_sent[s1] = sig_tag_begin + " " + ref_sent[s1]

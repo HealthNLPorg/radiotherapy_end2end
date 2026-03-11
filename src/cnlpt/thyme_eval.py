@@ -120,9 +120,7 @@ def main(args):
                 text += line
                 line_len = len(line)
                 line = line.rstrip()
-                if (
-                    line.startswith(("[meta", "[start section", "[end section"))
-                ):
+                if line.startswith(("[meta", "[start section", "[end section")):
                     if len(cur_section) > 0:
                         # section_texts.append('\n'.join(cur_section))
                         section_text = "\n".join(cur_section)

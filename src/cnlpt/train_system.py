@@ -743,16 +743,14 @@ def main(json_file=None, json_obj=None):
         )
         with open(output_eval_file, "a") as writer:
             writer.write(
-                
-                    "Training parameters:\n\n"
-                    f"Training set size {len(train_dataset)}\n"
-                    f"Batch size {training_args.train_batch_size}\n"
-                    f"Batches per epoch: {batches_per_epoch}\n\n"
-                    f"Total steps: {total_steps}\n"
-                    "------------------------------"
-                    f"Projected training epochs: {training_args.num_train_epochs}\n"
-                    f"actual_steps: {training_args.max_steps}"
-                
+                "Training parameters:\n\n"
+                f"Training set size {len(train_dataset)}\n"
+                f"Batch size {training_args.train_batch_size}\n"
+                f"Batches per epoch: {batches_per_epoch}\n\n"
+                f"Total steps: {total_steps}\n"
+                "------------------------------"
+                f"Projected training epochs: {training_args.num_train_epochs}\n"
+                f"actual_steps: {training_args.max_steps}"
             )
         if training_args.evals_per_epoch > 0:
             logger.warning(
@@ -766,12 +764,10 @@ def main(json_file=None, json_obj=None):
             # training_args.save_strategy = IntervalStrategy.EPOCH
             with open(output_eval_file, "a") as writer:
                 writer.write(
-                    
-                        "Eval arguments:\n\n"
-                        f"Steps per epoch: {steps_per_epoch}\n"
-                        f"Evals per epoch: {training_args.evals_per_epoch}\n"
-                        f"Eval steps: {training_args.eval_steps}\n\n"
-                    
+                    "Eval arguments:\n\n"
+                    f"Steps per epoch: {steps_per_epoch}\n"
+                    f"Evals per epoch: {training_args.evals_per_epoch}\n"
+                    f"Eval steps: {training_args.eval_steps}\n\n"
                 )
         elif training_args.do_eval:
             if training_args.actual_steps < 0 and training_args.actual_epochs < 0:
@@ -919,11 +915,9 @@ def main(json_file=None, json_obj=None):
     if training_args.lr_scheduler_type == SchedulerType["COSINE_WITH_RESTARTS"]:
         num_cycles = int(training_args.num_train_epochs / 3)
         logger.info(
-            
-                f"Build custom optimizer: AdamW + cosine_with_hard_restarts_schedule_with_warmup."
-                f"num_cycles: {num_cycles}; num_warmup_steps: {num_warmup_steps}; num_training_steps: "
-                f"{num_training_steps}."
-            
+            f"Build custom optimizer: AdamW + cosine_with_hard_restarts_schedule_with_warmup."
+            f"num_cycles: {num_cycles}; num_warmup_steps: {num_warmup_steps}; num_training_steps: "
+            f"{num_training_steps}."
         )
         scheduler = get_cosine_with_hard_restarts_schedule_with_warmup(
             optimizer=optimizer,
@@ -935,11 +929,9 @@ def main(json_file=None, json_obj=None):
     elif training_args.lr_scheduler_type == SchedulerType["COSINE"]:
         num_cycles = training_args.num_train_epochs / 6
         logger.info(
-            
-                f"Build custom optimizer: AdamW + cosine_schedule_with_warmup. "
-                f"num_cycles: {num_cycles}; num_warmup_steps: {num_warmup_steps}; num_training_steps: "
-                f"{num_training_steps}."
-            
+            f"Build custom optimizer: AdamW + cosine_schedule_with_warmup. "
+            f"num_cycles: {num_cycles}; num_warmup_steps: {num_warmup_steps}; num_training_steps: "
+            f"{num_training_steps}."
         )
         scheduler = get_cosine_schedule_with_warmup(
             optimizer=optimizer,
@@ -952,10 +944,8 @@ def main(json_file=None, json_obj=None):
     elif training_args.lr_scheduler_type == SchedulerType["LINEAR"]:
         num_cycles = 0
         logger.info(
-            
-                f"Build custom optimizer: AdamW + linear_schedule_with_warmup. "
-                f"num_warmup_steps: {num_warmup_steps}; num_training_steps: {num_training_steps}."
-            
+            f"Build custom optimizer: AdamW + linear_schedule_with_warmup. "
+            f"num_warmup_steps: {num_warmup_steps}; num_training_steps: {num_training_steps}."
         )
         scheduler = get_linear_schedule_with_warmup(
             optimizer=optimizer,

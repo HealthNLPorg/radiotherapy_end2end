@@ -266,7 +266,9 @@ def evaluation(pipeline_args):
 
     print("models loaded")
 
-    task_processor = cnlp_processors[classifier_to_relex[next(iter(out_model_dict.keys()))]]()
+    task_processor = cnlp_processors[
+        classifier_to_relex[next(iter(out_model_dict.keys()))]
+    ]()
     label_list = task_processor.get_labels()
     actual_labels = set()
     label_map = {label: i for i, label in enumerate(label_list)}
