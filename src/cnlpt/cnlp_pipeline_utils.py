@@ -186,11 +186,11 @@ def get_window_dictionary(paragraph, dictionary_dose_indices, taggers_dict, axis
     )
 
     paragraph_chunk_dose_pairs = list(filter(None, raw_dose_inds))
-    for begin, end in paragraph_chunk_dose_pairs:
-        if not (0 <= begin and begin < len(paragraph)) and not (
-            0 <= end and end < len(paragraph)
-        ):
-            print(f"WARNING - {begin} {end} - vs {len(paragraph)}")
+    # for begin, end in paragraph_chunk_dose_pairs:
+    #    if not (0 <= begin and begin < len(paragraph)) and not (
+    #        0 <= end and end < len(paragraph)
+    #    ):
+    #        print(f"WARNING - {begin} {end} - vs {len(paragraph)}")
 
     def local_w_indices(chunk_dose_pair):
         """
