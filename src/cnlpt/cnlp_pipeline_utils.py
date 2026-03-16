@@ -300,14 +300,14 @@ def merge_dose_indices(
     model_dose_indices: Collection[tuple[int, int]],
     dictionary_dose_indices: Collection[tuple[int, int]],
 ) -> Collection[tuple[int, int]]:
-    all_offsets = set()
+    non_overlapped_dictionary_offsets = set()
     for offsets in dictionary_dose_indices:
         if not any(
             overlap(t1=offsets, t2=model_offsets)
             for model_offsets in model_dose_indices
         ):
-            all_offsets.add(offsets)
-    return model_dose_indices.union(all_offsets)
+            non_overlapped_dictionary_offsets.add(offsets)
+    return model_dose_indices.union(non_overlapped_dictionary_offsets)
 
 
 def get_chunk_dose_indices(
@@ -323,15 +323,16 @@ def get_chunk_dose_indices(
     raw_dose_chunk_indices = process_ann(chunk_ann)
 
     dose_chunk_indices = {
-        itemgetter(*dose_inds)(filtered_inds) for dose_inds in raw_dose_chunk_indices
+        itemgetter(*dose_inds)(filtered_inds)
+        for dose_inds in merge_dose_indices(
+            model_dose_indices=raw_dose_chunk_indices,
+            dictionary_dose_indices=dictionary_dose_indices,
+        )
     }
 
     return {
         ((chunk_start, chunk_end), (chunk_start + dose_start, chunk_start + dose_end))
-        for dose_start, dose_end in merge_dose_indices(
-            model_dose_indices=dose_chunk_indices,
-            dictionary_dose_indices=dictionary_dose_indices,
-        )
+        for dose_start, dose_end in dose_chunk_indices
     }
 
 
