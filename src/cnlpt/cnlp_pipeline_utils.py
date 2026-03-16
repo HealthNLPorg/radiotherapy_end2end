@@ -446,13 +446,13 @@ def get_merged_annotation_dict(
           Dictionary of attribute indices -> annotated window for central dose mention and attribute mention
         """
         result = {}
-        for s_inds in sig_indices:
-            try:
-                result[s_inds] = local_merge(s_inds, sig_task)
-            except Exception:
-                print(f"Problem with indices {s_inds}")
-        return result
-        # return {s_inds: local_merge(s_inds, sig_task) for s_inds in sig_indices}
+        # for s_inds in sig_indices:
+        #     try:
+        #         result[s_inds] = local_merge(s_inds, sig_task)
+        #     except Exception:
+        #         print(f"Problem with indices {s_inds}")
+        # return result
+        return {s_inds: local_merge(s_inds, sig_task) for s_inds in sig_indices}
 
     merged_annotations = {
         task: get_sig_index_dict(indices, task)
