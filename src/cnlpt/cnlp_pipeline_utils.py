@@ -297,14 +297,14 @@ def merge_dose_indices(
     model_dose_indices: Set[tuple[int, int]],
     dictionary_dose_indices: Set[tuple[int, int]],
 ) -> Set[tuple[int, int]]:
-    non_overlapped_dictionary_offsets = set()
-    for offsets in dictionary_dose_indices:
+    return {
+        offsets
+        for offsets in dictionary_dose_indices
         if not any(
             overlap(t1=offsets, t2=model_offsets)
             for model_offsets in model_dose_indices
-        ):
-            non_overlapped_dictionary_offsets.add(offsets)
-    return model_dose_indices | non_overlapped_dictionary_offsets
+        )
+    } | model_dose_indices
 
 
 def get_chunk_dose_indices(
@@ -317,6 +317,11 @@ def get_chunk_dose_indices(
         return []
     chunk_ann = dose_model(filtered_chunk)
 
+    relevant_dictionary_dose_indices = {
+        (dose_begin, dose_end)
+        for dose_begin, dose_end in dictionary_dose_indices
+        if dose_begin <= chunk_start and dose_end <= chunk_end
+    }
     model_dose_indices = {
         (chunk_start + filtered_inds[dose_start], chunk_start + filtered_inds[dose_end])
         for dose_start, dose_end in process_ann(chunk_ann)
@@ -325,7 +330,7 @@ def get_chunk_dose_indices(
         ((chunk_start, chunk_end), (paragraph_dose_start, paragraph_dose_end))
         for paragraph_dose_start, paragraph_dose_end in merge_dose_indices(
             model_dose_indices=model_dose_indices,
-            dictionary_dose_indices=dictionary_dose_indices,
+            dictionary_dose_indices=relevant_dictionary_dose_indices,
         )
     ]
 
