@@ -181,16 +181,9 @@ def get_window_dictionary(paragraph, dictionary_dose_indices, taggers_dict, axis
 
     """
 
-    raw_dose_inds = get_dose_indices(
+    paragraph_chunk_dose_pairs = get_dose_indices(
         paragraph, dictionary_dose_indices, taggers_dict, axis_task
     )
-
-    paragraph_chunk_dose_pairs = list(filter(None, raw_dose_inds))
-    # for begin, end in paragraph_chunk_dose_pairs:
-    #    if not (0 <= begin and begin < len(paragraph)) and not (
-    #        0 <= end and end < len(paragraph)
-    #    ):
-    #        print(f"WARNING - {begin} {end} - vs {len(paragraph)}")
 
     def local_w_indices(chunk_dose_pair):
         """
@@ -213,11 +206,12 @@ def get_window_dictionary(paragraph, dictionary_dose_indices, taggers_dict, axis
         Returns:
           Nested dictioary of annotated windows in the paragraph, dose mention indices are the top level keys
         """
-        other_doses = [
+        _, central_inds = chunk_dose_pair
+        other_doses = {
             dose_inds
             for _, dose_inds in paragraph_chunk_dose_pairs
-            if (_, dose_inds) != chunk_dose_pair
-        ]
+            if dose_inds != central_inds
+        }
         return get_annotated_window_dict(
             chunk_dose_pair,
             other_doses,
@@ -256,6 +250,9 @@ def get_window_indices(chunk_indices, central_dose_indices):
     # this accounts for the case where the whole paragraph
     # is shorter than a normal window but has multiple doses
     # for which we want to run the model
+    print(
+        f"Window construction - window inds {(w_start, w_end)} - dose inds {central_dose_indices} - chunk inds {chunk_indices}"
+    )
     return (w_start, w_end), central_dose_indices
 
 
@@ -324,13 +321,13 @@ def get_chunk_dose_indices(
         (chunk_start + filtered_inds[dose_start], chunk_start + filtered_inds[dose_end])
         for dose_start, dose_end in process_ann(chunk_ann)
     }
-    return {
+    return [
         ((chunk_start, chunk_end), (paragraph_dose_start, paragraph_dose_end))
         for paragraph_dose_start, paragraph_dose_end in merge_dose_indices(
             model_dose_indices=model_dose_indices,
             dictionary_dose_indices=dictionary_dose_indices,
         )
-    }
+    ]
 
 
 def get_annotated_window_dict(
@@ -550,7 +547,13 @@ def get_non_central_indices(paragraph_dose_indices, window_start, window_end):
         """
         return any(i in range(window_start, window_end) for i in entity_span)
 
-    return [*map(window_adjust, filter(in_window, paragraph_dose_indices))]
+    result = [
+        window_adjust(entity_span)
+        for entity_span in paragraph_dose_indices
+        if in_window(entity_span)
+    ]
+    assert len(result) > 0
+    return result
 
 
 def get_partitions(annotation):
