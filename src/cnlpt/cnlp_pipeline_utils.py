@@ -2,7 +2,7 @@ import os
 import re
 import warnings
 from collections import Counter
-from collections.abc import Collection
+from collections.abc import Set
 from itertools import chain, zip_longest
 from operator import itemgetter
 
@@ -297,9 +297,9 @@ def overlap(t1: tuple[int, int], t2: tuple[int, int]) -> bool:
 
 
 def merge_dose_indices(
-    model_dose_indices: Collection[tuple[int, int]],
-    dictionary_dose_indices: Collection[tuple[int, int]],
-) -> Collection[tuple[int, int]]:
+    model_dose_indices: Set[tuple[int, int]],
+    dictionary_dose_indices: Set[tuple[int, int]],
+) -> Set[tuple[int, int]]:
     non_overlapped_dictionary_offsets = set()
     for offsets in dictionary_dose_indices:
         if not any(
@@ -307,7 +307,7 @@ def merge_dose_indices(
             for model_offsets in model_dose_indices
         ):
             non_overlapped_dictionary_offsets.add(offsets)
-    return model_dose_indices.union(non_overlapped_dictionary_offsets)
+    return model_dose_indices | non_overlapped_dictionary_offsets
 
 
 def get_chunk_dose_indices(
@@ -325,8 +325,8 @@ def get_chunk_dose_indices(
     dose_chunk_indices = {
         itemgetter(*dose_inds)(filtered_inds)
         for dose_inds in merge_dose_indices(
-            model_dose_indices=raw_dose_chunk_indices,
-            dictionary_dose_indices=dictionary_dose_indices,
+            model_dose_indices=set(raw_dose_chunk_indices),
+            dictionary_dose_indices=set(dictionary_dose_indices),
         )
     }
 
