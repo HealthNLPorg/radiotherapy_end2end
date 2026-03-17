@@ -250,9 +250,6 @@ def get_window_indices(chunk_indices, central_dose_indices):
     # this accounts for the case where the whole paragraph
     # is shorter than a normal window but has multiple doses
     # for which we want to run the model
-    print(
-        f"Window construction - window inds {(w_start, w_end)} - dose inds {central_dose_indices} - chunk inds {chunk_indices}"
-    )
     return (w_start, w_end), central_dose_indices
 
 
@@ -445,13 +442,6 @@ def get_merged_annotation_dict(
         Returns:
           Dictionary of attribute indices -> annotated window for central dose mention and attribute mention
         """
-        # result = {}
-        # for s_inds in sig_indices:
-        #     try:
-        #         result[s_inds] = local_merge(s_inds, sig_task)
-        #     except Exception:
-        #         print(f"Problem with indices {s_inds}")
-        # return result
         raw = {s_inds: local_merge(s_inds, sig_task) for s_inds in sig_indices}
         return {k: v for k, v in raw.items() if v is not None}
 
@@ -476,40 +466,33 @@ def merge_annotations(axis_span, axis_task, sig_span, sig_task, window, window_i
     Returns:
       Annotated window with tags around the central dose and around the provided attribute
     """
-    try:
-        axis_tag_begin, axis_tag_close = axis_tags[axis_task]
-        sig_tag_begin, sig_tag_close = signature_tags[sig_task]
+    axis_tag_begin, axis_tag_close = axis_tags[axis_task]
+    sig_tag_begin, sig_tag_close = signature_tags[sig_task]
 
-        window_start, _ = window_indices
-        _a1, _a2 = axis_span
-        a1, a2 = _a1 - window_start, _a2 - window_start
-        ref_sent = ctakes_tok(window)
-        ann_sent = ref_sent.copy()
-        ann_sent[a1] = axis_tag_begin + " " + ann_sent[a1]
-        ann_sent[a2] = ann_sent[a2] + " " + axis_tag_close
+    window_start, _ = window_indices
+    _a1, _a2 = axis_span
+    a1, a2 = _a1 - window_start, _a2 - window_start
+    ref_sent = ctakes_tok(window)
+    ann_sent = ref_sent.copy()
+    ann_sent[a1] = axis_tag_begin + " " + ann_sent[a1]
+    ann_sent[a2] = ann_sent[a2] + " " + axis_tag_close
 
-        s1, s2 = sig_span
+    s1, s2 = sig_span
 
-        intersects = get_intersect([(a1, a2)], [(s1, s2)])
-        if intersects:
-            warnings.warn(
-                f"Warning axis annotation and sig annotation \n"
-                f"{ref_sent}\n"
-                f"{a1, a2}\n"
-                f"{s1, s2}\n"
-                f"Have intersections at span:\n"
-                f"{intersects}"
-            )
+    intersects = get_intersect([(a1, a2)], [(s1, s2)])
+    if intersects:
+        warnings.warn(
+            f"Warning axis annotation and sig annotation \n"
+            f"{ref_sent}\n"
+            f"{a1, a2}\n"
+            f"{s1, s2}\n"
+            f"Have intersections at span:\n"
+            f"{intersects}"
+        )
 
-        ann_sent[s1] = sig_tag_begin + " " + ref_sent[s1]
-        ann_sent[s2] = ref_sent[s2] + " " + sig_tag_close
-        return {"ann_window": " ".join(ann_sent)}
-    except Exception:
-        print(f"axis span {axis_span}")
-        print(f"sig span {sig_span}")
-        print(window)
-        print(window_indices)
-        return None
+    ann_sent[s1] = sig_tag_begin + " " + ref_sent[s1]
+    ann_sent[s2] = ref_sent[s2] + " " + sig_tag_close
+    return {"ann_window": " ".join(ann_sent)}
 
 
 def get_non_central_indices(paragraph_dose_indices, window_start, window_end):
