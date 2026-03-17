@@ -541,24 +541,11 @@ def get_non_central_indices(paragraph_dose_indices, window_start, window_end):
             min(entity_end - window_start, window_end - window_start),
         )
 
-    def in_window(entity_span):
-        """
-
-        Args:
-          entity_span: paragraph relative span indices
-
-        Returns:
-          Whether the entity span at least partially overlaps with the window
-        """
-        return any(i in range(window_start, window_end) for i in entity_span)
-
-    result = [
+    return [
         window_adjust(entity_span)
         for entity_span in paragraph_dose_indices
-        if in_window(entity_span)
+        if any(i in range(window_start, window_end) for i in entity_span)
     ]
-    assert len(result) > 0
-    return result
 
 
 def get_partitions(annotation):
@@ -570,7 +557,7 @@ def get_partitions(annotation):
     Returns:
       NER model output tags without NER task info (e.g. B-fxno -> B)
     """
-    return "".join(map(lambda tag: tag[0], annotation))
+    return "".join(map(itemgetter(0), annotation))
 
 
 def process_ann(annotation):
