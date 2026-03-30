@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import warnings
@@ -24,6 +25,14 @@ from .pipelines.classification import ClassificationPipeline
 from .pipelines.tagging import TaggingPipeline
 from .rt_coordination_rules import filter_and_extrapolate_labels
 from .text_engineering import get_chunks, get_date_links, get_intersect, noncr_2_cr_inds
+
+logger = logging.getLogger(__name__)
+
+logging.basicConfig(
+    format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
+    datefmt="%m/%d/%Y %H:%M:%S",
+    level=logging.INFO,
+)
 
 SPECIAL_TOKENS = [
     "<e>",
@@ -294,14 +303,22 @@ def merge_dose_indices(
     model_dose_indices: Set[tuple[int, int]],
     dictionary_dose_indices: Set[tuple[int, int]],
 ) -> Set[tuple[int, int]]:
-    return {
+    dictionary_non_intersect = {
         offsets
         for offsets in dictionary_dose_indices
         if not any(
             overlap(t1=offsets, t2=model_offsets)
             for model_offsets in model_dose_indices
         )
-    } | model_dose_indices
+    }
+    result = dictionary_non_intersect | model_dose_indices
+    logger.info(
+        "non-intersect dictionary: %d model: %d total: %d",
+        len(dictionary_non_intersect),
+        len(model_dose_indices),
+        len(result),
+    )
+    return result
 
 
 def get_chunk_dose_indices(
