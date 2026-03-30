@@ -1,18 +1,15 @@
 import types
-from typing import List, Optional, Union
-from itertools import groupby
+from typing import Optional, Union
 
 import numpy as np
-
-from transformers.utils import add_end_docstrings
+from transformers.data.processors.utils import DataProcessor
 from transformers.pipelines.base import (
     PIPELINE_INIT_ARGS,
     ArgumentHandler,
     Dataset,
     Pipeline,
 )
-
-from transformers.data.processors.utils import DataProcessor
+from transformers.utils import add_end_docstrings
 
 from .__init__ import ctakes_tok
 
@@ -20,16 +17,13 @@ from .__init__ import ctakes_tok
 class TaggingArgumentHandler(ArgumentHandler):
     """Handles arguments for token classification."""
 
-    def __call__(self, inputs: Union[str, List[str]], **kwargs):
-
+    def __call__(self, inputs: Union[str, list[str]], **kwargs):
         if inputs is not None and isinstance(inputs, (list, tuple)) and len(inputs) > 0:
             inputs = list(inputs)
         elif isinstance(inputs, str):
             inputs = [inputs]
-        elif (
-            Dataset is not None
-            and isinstance(inputs, Dataset)
-            or isinstance(inputs, types.GeneratorType)
+        elif (Dataset is not None and isinstance(inputs, Dataset)) or isinstance(
+            inputs, types.GeneratorType
         ):
             return inputs, None
         else:
@@ -81,7 +75,7 @@ class TaggingPipeline(Pipeline):
 
         return preprocess_params, {}, postprocess_params
 
-    def __call__(self, inputs: Union[str, List[str]], **kwargs):
+    def __call__(self, inputs: Union[str, list[str]], **kwargs):
         """
         Flesh out(?) - see corresponding Huggingface code for format
         """
@@ -173,7 +167,7 @@ class TaggingPipeline(Pipeline):
         word_ids,
         scores: np.ndarray,
         label_list,
-    ) -> List[dict]:
+    ) -> list[dict]:
         """
 
         Args:

@@ -2,15 +2,17 @@ import re
 
 # from .pipelines import ctakes_tok
 from collections import deque
-from transitions import Machine
 from itertools import chain
+
+from transitions import Machine
+
 
 # ipython
 def ctakes_tok(s):
     """
 
     Args:
-      s: 
+      s:
 
     Returns:
 
@@ -22,7 +24,7 @@ def clean_numeric(t):
     """
 
     Args:
-      t: 
+      t:
 
     Returns:
 
@@ -36,7 +38,7 @@ def possible_year(t):
     """
 
     Args:
-      t: 
+      t:
 
     Returns:
 
@@ -49,7 +51,7 @@ def possible_day(t):
     """
 
     Args:
-      t: 
+      t:
 
     Returns:
 
@@ -62,7 +64,7 @@ def possible_month(t):
     """
 
     Args:
-      t: 
+      t:
 
     Returns:
 
@@ -75,7 +77,7 @@ def possible_year_not_day(t):
     """
 
     Args:
-      t: 
+      t:
 
     Returns:
 
@@ -88,8 +90,8 @@ def parse_numerics(s_toks, numeric_inds):
     """
 
     Args:
-      s_toks: 
-      numeric_inds: 
+      s_toks:
+      numeric_inds:
 
     Returns:
 
@@ -138,8 +140,9 @@ short_months = {
 }
 
 
-class NumericDateDetector(object):
+class NumericDateDetector:
     """ """
+
     states = [
         "start",
         "end",
@@ -216,8 +219,8 @@ class NumericDateDetector(object):
         """
 
         Args:
-          token: 
-          token_idx: 
+          token:
+          token_idx:
 
         Returns:
 
@@ -293,7 +296,7 @@ class NumericDateDetector(object):
         """
 
         Args:
-          token_ls: 
+          token_ls:
 
         Returns:
 
@@ -303,8 +306,9 @@ class NumericDateDetector(object):
         return self.indices
 
 
-class TextDateDetector(object):
+class TextDateDetector:
     """ """
+
     states = [
         "start",
         "end",
@@ -373,8 +377,8 @@ class TextDateDetector(object):
         """
 
         Args:
-          token: 
-          token_idx: 
+          token:
+          token_idx:
 
         Returns:
 
@@ -452,7 +456,7 @@ class TextDateDetector(object):
         """
 
         Args:
-          token_ls: 
+          token_ls:
 
         Returns:
 
@@ -466,7 +470,7 @@ def get_dates(s):
     """
 
     Args:
-      s: 
+      s:
 
     Returns:
 
@@ -479,7 +483,7 @@ def get_dates(s):
         """
 
         Args:
-          n: 
+          n:
 
         Returns:
 

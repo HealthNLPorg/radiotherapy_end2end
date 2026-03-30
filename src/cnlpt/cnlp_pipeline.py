@@ -1,30 +1,23 @@
 import os
-import sys
-import numpy as np
 import shutil
-
-from typing import Optional
+import sys
+from collections import defaultdict
 from dataclasses import dataclass, field
+from operator import itemgetter
+from typing import Optional
+
+import numpy as np
+from tabulate import tabulate
+from transformers import AutoConfig, AutoModel, HfArgumentParser
 
 from .cnlp_pipeline_utils import (
-    model_dicts,
-    get_sentences_and_labels,
     get_predictions,
+    get_sentences_and_labels,
+    model_dicts,
 )
-
 from .cnlp_processors import classifier_to_relex, cnlp_compute_metrics, cnlp_processors
-
-from .CnlpModelForClassification import CnlpModelForClassification, CnlpConfig
-
+from .CnlpModelForClassification import CnlpConfig, CnlpModelForClassification
 from .formatting import tabulate_report
-
-from tabulate import tabulate
-
-from collections import defaultdict
-
-from operator import itemgetter
-
-from transformers import AutoConfig, AutoModel, HfArgumentParser
 
 modes = ["inf", "eval"]
 
@@ -57,7 +50,11 @@ class PipelineArguments:
     )
     in_dir: Optional[str] = field(
         default=None,
-        metadata={"help": ("Use this argument when running the pipeline over a folder with mutliple files.")},
+        metadata={
+            "help": (
+                "Use this argument when running the pipeline over a folder with mutliple files."
+            )
+        },
     )
     out_dir: Optional[str] = field(
         default="cnlpt_predictions",
@@ -87,15 +84,17 @@ class PipelineArguments:
     )
     batch_size: int = field(
         default=1,
-        metadata={"help": ("Batch size for pipeline batching (where batching helps, possibly for larger datasets)")},
+        metadata={
+            "help": (
+                "Batch size for pipeline batching (where batching helps, possibly for larger datasets)"
+            )
+        },
     )
 
 
-    
-
 def labels_to_matrix(labels, dim):
     """
-    List of tuples describing values at cells of a matrix 
+    List of tuples describing values at cells of a matrix
     to the matrix they describe
 
     Args:
@@ -115,8 +114,8 @@ def labels_to_matrix(labels, dim):
 
 def fix_gold_labels(labels, inv_map):
     """
-    Rearranges the scoring matrix to prevent 
-    any collisions of DOSE-BOOST and DOSE-SITE 
+    Rearranges the scoring matrix to prevent
+    any collisions of DOSE-BOOST and DOSE-SITE
     (the only types of relations where this is possible)
     while retaining accurate scoring
 
@@ -192,7 +191,7 @@ def main():
         (pipeline_args,) = parser.parse_args_into_dataclasses()
 
     print("main entered")
-        
+
     if pipeline_args.mode == "inf":
         inference(pipeline_args)
     elif pipeline_args.mode == "eval":
@@ -238,7 +237,7 @@ def inference(pipeline_args):
             mode="inf",
             task_names=out_model_dict.keys(),
         )
-        paragraph_label_tuples = get_predictions(
+        get_predictions(
             pipeline_args.out_dir,
             in_file,
             sentences,
@@ -266,8 +265,10 @@ def evaluation(pipeline_args):
     taggers_dict, out_model_dict = model_dicts(pipeline_args.models_dir)
 
     print("models loaded")
-    
-    task_processor = cnlp_processors[classifier_to_relex[[*out_model_dict.keys()][0]]]()
+
+    task_processor = cnlp_processors[
+        classifier_to_relex[next(iter(out_model_dict.keys()))]
+    ]()
     label_list = task_processor.get_labels()
     actual_labels = set()
     label_map = {label: i for i, label in enumerate(label_list)}
@@ -278,7 +279,7 @@ def evaluation(pipeline_args):
         shutil.rmtree(pipeline_args.out_dir, ignore_errors=True)
         os.makedirs(pipeline_args.out_dir)
 
-    document_cumulative_dict = defaultdict(lambda: defaultdict(lambda: []))
+    document_cumulative_dict = defaultdict(lambda: defaultdict(list))
 
     file_list = (
         [
@@ -288,8 +289,6 @@ def evaluation(pipeline_args):
         if dir_mode
         else [pipeline_args.in_file]
     )
-
-    corpus_max_sent_len = -1
 
     ordered_metrics = {}
 
@@ -339,7 +338,7 @@ def evaluation(pipeline_args):
         if not os.path.exists(note_dir):
             os.makedirs(note_dir)
 
-        out_task, doc_labels_map = [*idx_labels_dict.items()][0]
+        out_task, doc_labels_map = next(iter(idx_labels_dict.items()))
 
         def fix_gold(label_list):
             """
@@ -375,7 +374,7 @@ def evaluation(pipeline_args):
               (idx_1, idx_2, label_string)
             """
             first, second, label_idx = label_tuple
-            return f, s, inv_label_map[l]
+            return first, second, inv_label_map[label_idx]
 
         paragraph_label_tuples = get_predictions(
             pipeline_args.out_dir,
@@ -434,12 +433,11 @@ def evaluation(pipeline_args):
 
         out_file = os.path.join(note_dir, out_fn)
         ordered_metrics[file_idx] = note_identifier + "\n\n" + report_str
-        with open(out_file, "wt") as out_writer:
+        with open(out_file, "w") as out_writer:
             out_writer.write(report_str)
 
     if dir_mode:
         for out_task in out_model_dict:
-
             report = cnlp_compute_metrics(
                 classifier_to_relex[out_task],
                 np.hstack(total_preds),
@@ -473,17 +471,17 @@ def evaluation(pipeline_args):
             )
 
             report_str = tabulate_report(report)
-            print(f"FINAL -- SPLIT LEVEL INSTANCE AVERAGED RESULTS\n\n")
+            print("FINAL -- SPLIT LEVEL INSTANCE AVERAGED RESULTS\n\n")
 
             print(report_str)
-            print(f"\n\nFINAL -- SPLIT LEVEL DOCUMENT AVERAGED RESULTS\n\n")
+            print("\n\nFINAL -- SPLIT LEVEL DOCUMENT AVERAGED RESULTS\n\n")
 
             print(document_report_table)
 
             out_fn = "split_metrics.txt"
 
             out_file = os.path.join(pipeline_args.out_dir, out_fn)
-            with open(out_file, "wt") as out_writer:
+            with open(out_file, "w") as out_writer:
                 out_writer.write("INSTANCE AVERAGED RESULTS OVER THE SPLIT\n\n")
                 out_writer.write(report_str)
 

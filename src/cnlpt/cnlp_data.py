@@ -1,27 +1,26 @@
-import os
-from os.path import basename, dirname
-import time
-import logging
 import json
-
-from filelock import FileLock
-from typing import Callable, Dict, Optional, List, Union, Tuple
+import logging
+import os
+import time
+from dataclasses import asdict, astuple, dataclass, field
+from enum import Enum
+from os.path import basename, dirname
+from typing import Optional, Union
 
 import numpy as np
 import torch
+from filelock import FileLock
 from torch.utils.data.dataset import Dataset
-from transformers.data.processors.utils import DataProcessor, InputExample
+from transformers.data.processors.utils import InputExample
 from transformers.tokenization_utils import PreTrainedTokenizer
-from dataclasses import dataclass, field, asdict, astuple
-from enum import Enum
 
 from .cnlp_processors import (
-    cnlp_processors,
-    cnlp_output_modes,
     classification,
-    tagging,
-    relex,
+    cnlp_output_modes,
+    cnlp_processors,
     mtl,
+    relex,
+    tagging,
 )
 
 special_tokens = [
@@ -93,11 +92,11 @@ class InputFeatures:
 
     """
 
-    input_ids: List[int]
-    attention_mask: Optional[List[int]] = None
-    token_type_ids: Optional[List[int]] = None
-    event_tokens: Optional[List[int]] = None
-    label: List[Optional[Union[int, float, List[int], List[Tuple[int]]]]] = None
+    input_ids: list[int]
+    attention_mask: Optional[list[int]] = None
+    token_type_ids: Optional[list[int]] = None
+    event_tokens: Optional[list[int]] = None
+    label: list[Optional[Union[int, float, list[int], list[tuple[int]]]]] = None
 
     def to_json_string(self):
         """Serializes this instance to a JSON string."""
@@ -124,11 +123,11 @@ class HierarchicalInputFeatures:
 
     """
 
-    input_ids: List[List[int]]
-    attention_mask: Optional[List[List[int]]] = None
-    token_type_ids: Optional[List[List[int]]] = None
-    event_tokens: Optional[List[List[int]]] = None
-    label: List[Optional[Union[int, float, List[int], List[Tuple[int]]]]] = None
+    input_ids: list[list[int]]
+    attention_mask: Optional[list[list[int]]] = None
+    token_type_ids: Optional[list[list[int]]] = None
+    event_tokens: Optional[list[list[int]]] = None
+    label: list[Optional[Union[int, float, list[int], list[tuple[int]]]]] = None
 
     def to_json_string(self):
         """Serializes this instance to a JSON string."""
@@ -161,12 +160,12 @@ def cnlp_convert_features_to_hierarchical(
       int: pad_id: the tokenizer's ID representing the PAD token
       bool: insert_empty_chunk_at_beginning: whether to insert an
     empty chunk at the beginning of the instance
-      features: InputFeatures: 
-      chunk_len: int: 
-      num_chunks: int: 
-      cls_id: int: 
-      sep_id: int: 
-      pad_id: int: 
+      features: InputFeatures:
+      chunk_len: int:
+      num_chunks: int:
+      cls_id: int:
+      sep_id: int:
+      pad_id: int:
       insert_empty_chunk_at_beginning: bool:  (Default value = False)
       # cls_token_at_end:  (Default value = False)
       # sequence_a_segment_id:  (Default value = 0)
@@ -204,7 +203,7 @@ def cnlp_convert_features_to_hierarchical(
         """
 
         Args:
-          chunk: 
+          chunk:
           pad_type:  (Default value = pad_id)
 
         Returns:
@@ -218,7 +217,7 @@ def cnlp_convert_features_to_hierarchical(
         """
 
         Args:
-          chunk: 
+          chunk:
           cls_type:  (Default value = cls_id)
           sep_type:  (Default value = sep_id)
           pad_type:  (Default value = pad_id)
@@ -227,7 +226,7 @@ def cnlp_convert_features_to_hierarchical(
         Returns:
 
         """
-        formatted_chunk = [cls_type] + chunk + [sep_type]
+        formatted_chunk = [cls_type, *chunk, sep_type]
         if pad:
             return pad_chunk(formatted_chunk, pad_type=pad_type)
         else:
@@ -275,7 +274,7 @@ def cnlp_convert_features_to_hierarchical(
         Returns:
 
         """
-        return pad_chunk([cls_type] + [sep_type], pad_type=pad_type)
+        return pad_chunk([cls_type, sep_type], pad_type=pad_type)
 
     # Insert an empty chunk at the beginning.
     if insert_empty_chunk_at_beginning:
@@ -318,11 +317,11 @@ def cnlp_convert_features_to_hierarchical(
 
 
 def cnlp_convert_examples_to_features(
-    examples: List[InputExample],
+    examples: list[InputExample],
     tokenizer: PreTrainedTokenizer,
     max_length: Optional[int] = None,
-    task: str = None,
-    label_list: Optional[List[str]] = None,
+    task: Optional[str] = None,
+    label_list: Optional[list[str]] = None,
     output_mode: Optional[str] = None,
     inference: bool = False,
     hierarchical: bool = False,
@@ -330,7 +329,7 @@ def cnlp_convert_examples_to_features(
     num_chunks: int = -1,
     insert_empty_chunk_at_beginning: bool = False,
     truncate_examples: bool = False,
-) -> Union[List[InputFeatures], List[HierarchicalInputFeatures]]:
+) -> Union[list[InputFeatures], list[HierarchicalInputFeatures]]:
     """Processes the list of :class:`transformers.InputExample` generated by
     the processor defined in :data:`cnlpt.cnlp_processors.cnlp_processors`
     and converts the examples into a list of :class:`InputFeatures` or
@@ -360,8 +359,8 @@ def cnlp_convert_examples_to_features(
     (equivalent in theory to a CLS chunk).
       bool: truncate_examples: whether to truncate the string representation
     of the example instances printed to the log
-      examples: List[InputExample]: 
-      tokenizer: PreTrainedTokenizer: 
+      examples: List[InputExample]:
+      tokenizer: PreTrainedTokenizer:
       max_length: Optional[int]:  (Default value = None)
       task: str:  (Default value = None)
       label_list: Optional[List[str]]:  (Default value = None)
@@ -387,10 +386,10 @@ def cnlp_convert_examples_to_features(
         processor = cnlp_processors[task]()
         if label_list is None:
             label_list = processor.get_labels()
-            logger.info("Using label list %s for task %s" % (label_list, task))
+            logger.info(f"Using label list {label_list} for task {task}")
         if output_mode is None:
             output_mode = cnlp_output_modes[task]
-            logger.info("Using output mode %s for task %s" % (output_mode, task))
+            logger.info(f"Using output mode {output_mode} for task {task}")
 
     label_map = {label: i for i, label in enumerate(label_list)}
 
@@ -398,7 +397,7 @@ def cnlp_convert_examples_to_features(
         """
 
         Args:
-          example: InputExample: 
+          example: InputExample:
 
         Returns:
 
@@ -411,7 +410,7 @@ def cnlp_convert_examples_to_features(
             try:
                 return label_map[example.label]
             except:
-                logger.error("Error with example %s" % (example.guid))
+                logger.error(f"Error with example {example.guid}")
                 raise Exception()
 
         elif output_mode == "regression":
@@ -503,7 +502,7 @@ def cnlp_convert_examples_to_features(
                             sent_labels[wpi, wpi2] = 0.0
 
                 for label in labels[sent_ind]:
-                    if not label[0] in tokeni_to_wpi or not label[1] in tokeni_to_wpi:
+                    if label[0] not in tokeni_to_wpi or label[1] not in tokeni_to_wpi:
                         out_of_bounds += 1
                         continue
 
@@ -515,7 +514,7 @@ def cnlp_convert_examples_to_features(
                 encoded_labels.append(sent_labels)
             labels = encoded_labels
             if out_of_bounds > 0:
-                logging.warn(
+                logging.warning(
                     "During relation processing, there were %d relations (out of %d total relations) where at least one argument was truncated so the relation could not be trained/predicted."
                     % (out_of_bounds, num_relations)
                 )
@@ -562,9 +561,9 @@ def cnlp_convert_examples_to_features(
 
     for i, example in enumerate(examples[:5]):
         logger.info("*** Example ***")
-        logger.info("guid: %s" % (example.guid))
+        logger.info(f"guid: {example.guid}")
         logger.info(
-            "features: %s" % truncate_features(features[i])
+            f"features: {truncate_features(features[i])}"
             if truncate_examples
             else features[i]
         )
@@ -578,8 +577,8 @@ def truncate_features(feature: Union[InputFeatures, HierarchicalInputFeatures]):
     Args:
       typing: Union[InputFeatures, HierarchicalInputFeatures] feature:
     the feature to represent
-      feature: Union[InputFeatures: 
-      HierarchicalInputFeatures]: 
+      feature: Union[InputFeatures:
+      HierarchicalInputFeatures]:
 
     Returns:
       the truncated representation of the feature
@@ -602,7 +601,7 @@ def summarize(li):
     """
 
     Args:
-      li: 
+      li:
 
     Returns:
 
@@ -616,8 +615,8 @@ def truncate_list_of_lists(li: Union[list, str]) -> Union[list, str]:
     """
 
     Args:
-      li: Union[list: 
-      str]: 
+      li: Union[list:
+      str]:
 
     Returns:
 
@@ -648,7 +647,7 @@ class DataTrainingArguments:
 
     """
 
-    data_dir: List[str] = field(
+    data_dir: list[str] = field(
         metadata={
             "help": "The input data dirs. A space-separated list of directories that "
             "should contain the .tsv files (or other data files) for the task. "
@@ -656,7 +655,7 @@ class DataTrainingArguments:
         }
     )
 
-    task_name: List[str] = field(
+    task_name: list[str] = field(
         default_factory=lambda: None,
         metadata={
             "help": "A space-separated list of tasks to train on: "
@@ -731,8 +730,8 @@ class ClinicalNlpDataset(Dataset):
     """
 
     args: DataTrainingArguments
-    output_mode: List[str]
-    features: List[InputFeatures]
+    output_mode: list[str]
+    features: list[InputFeatures]
 
     def __init__(
         self,
@@ -777,13 +776,7 @@ class ClinicalNlpDataset(Dataset):
 
             cached_features_file = os.path.join(
                 cache_dir if cache_dir is not None else data_dir,
-                "cached_{}-{}_{}_{}_{}".format(
-                    dataconfig,
-                    domain,
-                    mode.value,
-                    tokenizer.__class__.__name__,
-                    str(args.max_seq_length),
-                ),
+                f"cached_{dataconfig}-{domain}_{mode.value}_{tokenizer.__class__.__name__}_{args.max_seq_length!s}",
             )
             if self.hierarchical:
                 cached_features_file += "_hier"
@@ -792,7 +785,6 @@ class ClinicalNlpDataset(Dataset):
             # and the others will use the cache.
             lock_path = cached_features_file + ".lock"
             with FileLock(lock_path):
-
                 if os.path.exists(cached_features_file) and not args.overwrite_cache:
                     start = time.time()
                     features = torch.load(cached_features_file)
@@ -864,9 +856,9 @@ class ClinicalNlpDataset(Dataset):
                 else:
                     assert len(features) == len(self.features)
                     if self.features[0].label is None:
-                        assert (
-                            features[0].label is None
-                        ), "Some of the tasks have None labels and others do not, they should be consistent!"
+                        assert features[0].label is None, (
+                            "Some of the tasks have None labels and others do not, they should be consistent!"
+                        )
                     else:
                         # we should have all non-label features be the same, so we can essentially discard subsequent
                         # datasets input features. So we'll append the labels from that features list and discard the duplicate input features.

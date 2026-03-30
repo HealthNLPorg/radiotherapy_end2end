@@ -1,34 +1,38 @@
+import logging
 import os
 import re
-import torch
 import warnings
+from collections import Counter
+from collections.abc import Set
+from itertools import chain, zip_longest
+from operator import itemgetter
 
-from .cnlp_processors import (
-    cnlp_processors,
-    cnlp_output_modes,
-    tagging,
-    classification,
-    classifier_to_relex,
-    axis_tags,
-    signature_tags,
-)
-
-from .pipelines.tagging import TaggingPipeline
-from .pipelines.classification import ClassificationPipeline
-from .pipelines import ctakes_tok
-
-from .CnlpModelForClassification import CnlpModelForClassification
-
-from .text_engineering import get_chunks, get_date_links, get_intersect, noncr_2_cr_inds
-from .rt_coordination_rules import filter_and_extrapolate_labels
-from .date_fsm import get_dates
-
+import torch
 from transformers import AutoConfig, AutoTokenizer
 
+from .cnlp_processors import (
+    axis_tags,
+    classification,
+    classifier_to_relex,
+    cnlp_output_modes,
+    cnlp_processors,
+    signature_tags,
+    tagging,
+)
+from .CnlpModelForClassification import CnlpModelForClassification
+from .pipelines import ctakes_tok
+from .pipelines.classification import ClassificationPipeline
+from .pipelines.tagging import TaggingPipeline
+from .rt_coordination_rules import filter_and_extrapolate_labels
+from .text_engineering import get_chunks, get_date_links, get_intersect, noncr_2_cr_inds
 
-from operator import itemgetter
-from collections import Counter
-from itertools import chain, zip_longest
+logger = logging.getLogger(__name__)
+
+logging.basicConfig(
+    format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
+    datefmt="%m/%d/%Y %H:%M:%S",
+    level=logging.INFO,
+)
 
 SPECIAL_TOKENS = [
     "<e>",
@@ -71,7 +75,7 @@ def model_dicts(models_dir):
     """
     # Pipelines go to CPU (-1) by default so if
     # available send to GPU (0)
-    main_device = 0 if torch.cuda.is_available() else -1
+    0 if torch.cuda.is_available() else -1
 
     taggers_dict = {}
     out_model_dict = {}
@@ -81,7 +85,6 @@ def model_dicts(models_dir):
         model_dir = os.path.join(models_dir, file)
         task_name = str(file)
         if os.path.isdir(model_dir) and task_name in cnlp_processors.keys():
-
             # Load the model, model config, and model tokenizer
             # from the model foldner
             config = AutoConfig.from_pretrained(
@@ -91,6 +94,7 @@ def model_dicts(models_dir):
             model = CnlpModelForClassification.from_pretrained(
                 model_dir,
                 config=config,
+                # device_map="meta",  # TODO see if this helps
             )
 
             tokenizer = AutoTokenizer.from_pretrained(
@@ -113,7 +117,7 @@ def model_dicts(models_dir):
                     model=model,
                     tokenizer=tokenizer,
                     task_processor=task_processor,
-                    device=main_device,
+                    # device=main_device,
                     # Just get rid of it
                     # batch_size=batch_size,
                 )
@@ -126,7 +130,7 @@ def model_dicts(models_dir):
                     tokenizer=tokenizer,
                     return_all_scores=True,
                     task_processor=task_processor,
-                    device=main_device,
+                    # device=main_device,
                     # this is done one by one anyway...
                     # batch_size=batch_size,
                 )
@@ -135,43 +139,28 @@ def model_dicts(models_dir):
             # not supported for now since I wasn't sure how to fit them in
             else:
                 ValueError(
-                    (
-                        "output mode "
-                        f"{cnlp_output_modes[task_name]}"
-                        "not currently supported"
-                    )
+                    f"output mode {cnlp_output_modes[task_name]}not currently supported"
                 )
     return taggers_dict, out_model_dict
 
 
-def generate_paragraph_casoids(paragraphs, taggers_dict, axis_task):
-    """
-
-    Args:
-      paragraphs: list of plaintext cTAKES tokenized paragraphs
-      taggers_dict: NER model dictionary
-      axis_task: NER task which is the anchor of all the relations
-
-    Returns:
-      list (iterable map object) of CAS-like (as in UIMA CAS) objects,
-      one per paragraph
-    """
-
-    def process(paragraph):
-        """
-
-        Args:
-          paragraph:
-
-        Returns:
-          Paragraph CASoid with NER mentions and annotated text windows
-        """
-        return window_assemble(paragraph, taggers_dict, axis_task)
-
-    return map(process, paragraphs)
+def generate_paragraph_casoids(
+    paragraphs, dictionary_dose_indices_list, taggers_dict, axis_task
+):
+    return [
+        window_assemble(
+            paragraph=paragraph,
+            dictionary_dose_indices=dictionary_dose_indices,
+            taggers_dict=taggers_dict,
+            axis_task=axis_task,
+        )
+        for paragraph, dictionary_dose_indices in zip(
+            paragraphs, dictionary_dose_indices_list
+        )
+    ]
 
 
-def window_assemble(paragraph, taggers_dict, axis_task):
+def window_assemble(paragraph, dictionary_dose_indices, taggers_dict, axis_task):
     """
 
     Args:
@@ -182,10 +171,12 @@ def window_assemble(paragraph, taggers_dict, axis_task):
     Returns:
       Paragraph and paragraph CASoid with NER mentions and annotated text windows
     """
-    return paragraph, get_window_dictionary(paragraph, taggers_dict, axis_task)
+    return paragraph, get_window_dictionary(
+        paragraph, dictionary_dose_indices, taggers_dict, axis_task
+    )
 
 
-def get_window_dictionary(paragraph, taggers_dict, axis_task):
+def get_window_dictionary(paragraph, dictionary_dose_indices, taggers_dict, axis_task):
     """
 
     Args:
@@ -199,9 +190,9 @@ def get_window_dictionary(paragraph, taggers_dict, axis_task):
 
     """
 
-    raw_dose_inds = get_dose_indices(paragraph, taggers_dict, axis_task)
-
-    paragraph_chunk_dose_pairs = [*filter(None, raw_dose_inds)]
+    paragraph_chunk_dose_pairs = get_dose_indices(
+        paragraph, dictionary_dose_indices, taggers_dict, axis_task
+    )
 
     def local_w_indices(chunk_dose_pair):
         """
@@ -224,11 +215,12 @@ def get_window_dictionary(paragraph, taggers_dict, axis_task):
         Returns:
           Nested dictioary of annotated windows in the paragraph, dose mention indices are the top level keys
         """
-        other_doses = [
+        _, central_inds = chunk_dose_pair
+        other_doses = {
             dose_inds
             for _, dose_inds in paragraph_chunk_dose_pairs
-            if (_, dose_inds) != chunk_dose_pair
-        ]
+            if dose_inds != central_inds
+        }
         return get_annotated_window_dict(
             chunk_dose_pair,
             other_doses,
@@ -270,7 +262,7 @@ def get_window_indices(chunk_indices, central_dose_indices):
     return (w_start, w_end), central_dose_indices
 
 
-def get_dose_indices(paragraph, taggers_dict, axis_task):
+def get_dose_indices(paragraph, dictionary_dose_indices, taggers_dict, axis_task):
     """
 
     Args:
@@ -291,7 +283,9 @@ def get_dose_indices(paragraph, taggers_dict, axis_task):
         Returns:
           List of indices of dose mentions within the chunk
         """
-        return get_chunk_dose_indices(chunk_indices, chunk, taggers_dict, axis_task)
+        return get_chunk_dose_indices(
+            chunk_indices, dictionary_dose_indices, chunk, taggers_dict, axis_task
+        )
 
     return chain.from_iterable(
         get_chunk_doses(chunk_indices, chunk)
@@ -299,34 +293,59 @@ def get_dose_indices(paragraph, taggers_dict, axis_task):
     )
 
 
-def get_chunk_dose_indices(chunk_indices, chunk, taggers_dict, axis_task):
-    """
+def overlap(t1: tuple[int, int], t2: tuple[int, int]) -> bool:
+    t1_begin, t1_end = t1
+    t2_begin, t2_end = t2
+    return t1_begin < t2_end and t2_begin < t1_end
 
-    Args:
-      chunk_indices:
-      chunk:
-      taggers_dict:
-      axis_task:
 
-    Returns:
+def merge_dose_indices(
+    model_dose_indices: Set[tuple[int, int]],
+    dictionary_dose_indices: Set[tuple[int, int]],
+) -> Set[tuple[int, int]]:
+    dictionary_non_intersect = {
+        offsets
+        for offsets in dictionary_dose_indices
+        if not any(
+            overlap(t1=offsets, t2=model_offsets)
+            for model_offsets in model_dose_indices
+        )
+    }
+    result = dictionary_non_intersect | model_dose_indices
+    logger.info(
+        "non-intersect dictionary: %d model: %d total: %d",
+        len(dictionary_non_intersect),
+        len(model_dose_indices),
+        len(result),
+    )
+    return result
 
-    """
+
+def get_chunk_dose_indices(
+    chunk_indices, dictionary_dose_indices, chunk, taggers_dict, axis_task
+):
     chunk_start, chunk_end = chunk_indices
     dose_model = taggers_dict[axis_task]
     filtered_chunk, filtered_inds = noncr_2_cr_inds(chunk)
     if filtered_chunk is None:
         return []
     chunk_ann = dose_model(filtered_chunk)
-    
-    raw_dose_chunk_indices = process_ann(chunk_ann)
 
-    dose_chunk_indices = [
-        itemgetter(*dose_inds)(filtered_inds) for dose_inds in raw_dose_chunk_indices
-    ]
-
+    relevant_dictionary_dose_indices = {
+        (dose_begin, dose_end)
+        for dose_begin, dose_end in dictionary_dose_indices
+        if dose_begin <= chunk_start and dose_end <= chunk_end
+    }
+    model_dose_indices = {
+        (chunk_start + filtered_inds[dose_start], chunk_start + filtered_inds[dose_end])
+        for dose_start, dose_end in process_ann(chunk_ann)
+    }
     return [
-        ((chunk_start, chunk_end), (chunk_start + dose_start, chunk_start + dose_end))
-        for dose_start, dose_end in dose_chunk_indices
+        ((chunk_start, chunk_end), (paragraph_dose_start, paragraph_dose_end))
+        for paragraph_dose_start, paragraph_dose_end in merge_dose_indices(
+            model_dose_indices=model_dose_indices,
+            dictionary_dose_indices=relevant_dictionary_dose_indices,
+        )
     ]
 
 
@@ -440,7 +459,8 @@ def get_merged_annotation_dict(
         Returns:
           Dictionary of attribute indices -> annotated window for central dose mention and attribute mention
         """
-        return {s_inds: local_merge(s_inds, sig_task) for s_inds in sig_indices}
+        raw = {s_inds: local_merge(s_inds, sig_task) for s_inds in sig_indices}
+        return {k: v for k, v in raw.items() if v is not None}
 
     merged_annotations = {
         task: get_sig_index_dict(indices, task)
@@ -463,23 +483,23 @@ def merge_annotations(axis_span, axis_task, sig_span, sig_task, window, window_i
     Returns:
       Annotated window with tags around the central dose and around the provided attribute
     """
-    axis_tag_begin, axis_tag_close = axis_tags[axis_task]
-    sig_tag_begin, sig_tag_close = signature_tags[sig_task]
+    try:
+        axis_tag_begin, axis_tag_close = axis_tags[axis_task]
+        sig_tag_begin, sig_tag_close = signature_tags[sig_task]
 
-    window_start, _ = window_indices
-    _a1, _a2 = axis_span
-    a1, a2 = _a1 - window_start, _a2 - window_start
-    ref_sent = ctakes_tok(window)
-    ann_sent = ref_sent.copy()
-    ann_sent[a1] = axis_tag_begin + " " + ann_sent[a1]
-    ann_sent[a2] = ann_sent[a2] + " " + axis_tag_close
+        window_start, _ = window_indices
+        _a1, _a2 = axis_span
+        a1, a2 = _a1 - window_start, _a2 - window_start
+        ref_sent = ctakes_tok(window)
+        ann_sent = ref_sent.copy()
+        ann_sent[a1] = axis_tag_begin + " " + ann_sent[a1]
+        ann_sent[a2] = ann_sent[a2] + " " + axis_tag_close
 
-    s1, s2 = sig_span
+        s1, s2 = sig_span
 
-    intersects = get_intersect([(a1, a2)], [(s1, s2)])
-    if intersects:
-        warnings.warn(
-            (
+        intersects = get_intersect([(a1, a2)], [(s1, s2)])
+        if intersects:
+            warnings.warn(
                 f"Warning axis annotation and sig annotation \n"
                 f"{ref_sent}\n"
                 f"{a1, a2}\n"
@@ -487,11 +507,16 @@ def merge_annotations(axis_span, axis_task, sig_span, sig_task, window, window_i
                 f"Have intersections at span:\n"
                 f"{intersects}"
             )
-        )
 
-    ann_sent[s1] = sig_tag_begin + " " + ref_sent[s1]
-    ann_sent[s2] = ref_sent[s2] + " " + sig_tag_close
-    return {"ann_window": " ".join(ann_sent)}
+        ann_sent[s1] = sig_tag_begin + " " + ref_sent[s1]
+        ann_sent[s2] = ref_sent[s2] + " " + sig_tag_close
+        return {"ann_window": " ".join(ann_sent)}
+    except Exception:
+        print(f"axis span {axis_span}")
+        print(f"sig span {sig_span}")
+        print(window)
+        print(window_indices)
+        return None
 
 
 def get_non_central_indices(paragraph_dose_indices, window_start, window_end):
@@ -523,18 +548,11 @@ def get_non_central_indices(paragraph_dose_indices, window_start, window_end):
             min(entity_end - window_start, window_end - window_start),
         )
 
-    def in_window(entity_span):
-        """
-
-        Args:
-          entity_span: paragraph relative span indices
-
-        Returns:
-          Whether the entity span at least partially overlaps with the window
-        """
-        return any(i in range(window_start, window_end) for i in entity_span)
-
-    return [*map(window_adjust, filter(in_window, paragraph_dose_indices))]
+    return [
+        window_adjust(entity_span)
+        for entity_span in paragraph_dose_indices
+        if any(i in range(window_start, window_end) for i in entity_span)
+    ]
 
 
 def get_partitions(annotation):
@@ -546,7 +564,7 @@ def get_partitions(annotation):
     Returns:
       NER model output tags without NER task info (e.g. B-fxno -> B)
     """
-    return "".join(map(lambda tag: tag[0], annotation))
+    return "".join(map(itemgetter(0), annotation))
 
 
 def process_ann(annotation):
@@ -614,7 +632,7 @@ def get_sentences_and_labels(in_file: str, mode: str, task_names):
         # 'dev' lets us get labels without running into issues of downsampling
         lines = task_processors[0]._read_tsv(in_file)
         examples = task_processors[0]._create_examples(lines, "dev")
-        
+
         def example2label(example):
             """
 
@@ -624,6 +642,7 @@ def get_sentences_and_labels(in_file: str, mode: str, task_names):
             Returns:
               Label data formatted for scoring
             """
+
             # Just assumed relex
             def conv_tuple(l_tuple):
                 """
@@ -699,11 +718,11 @@ def classify_casoid_annotations(casoid, out_model_dict):
                 for out_task, out_model in out_model_dict.items():
                     filtered_window, _ = noncr_2_cr_inds(sent_dict["ann_window"])
                     model_output = out_model(
-                            filtered_window,
-                            padding="max_length",
-                            truncation=True,
-                            is_split_into_words=True,
-                        )
+                        filtered_window,
+                        padding="max_length",
+                        truncation=True,
+                        is_split_into_words=True,
+                    )
                     # For the dose/attr pair
                     # pick the label with the strongest signal
                     strongest_label_dict = max(
@@ -1058,7 +1077,7 @@ def casoid_entity_print(parent_dir, filename, paragraph, casoid, label_tuples, i
         ]
     )
     out_file = os.path.join(note_dir, out_fn)
-    with open(out_file, "at") as out_writer:
+    with open(out_file, "a") as out_writer:
         out_writer.write(f"{idx + 1}.\n\n")
         out_writer.write(f"Relation type counts:\n{relation_counts_str}")
         out_writer.write("\n\n")
@@ -1151,7 +1170,7 @@ def get_predictions(
         return casoid_entity_print(out_dir, in_file, paragraph, casoid, label, idx)
 
     paragraphs_2_raw_casoids = generate_paragraph_casoids(
-        paragraphs, taggers_dict, axis_task
+        paragraphs, {}, taggers_dict, axis_task
     )
 
     paragraphs_2_classified_cassoids = [*map(classify_casoid, paragraphs_2_raw_casoids)]
