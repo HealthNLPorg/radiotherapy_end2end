@@ -312,11 +312,8 @@ def merge_dose_indices(
         )
     }
     result = dictionary_non_intersect | model_dose_indices
-    logger.info(
-        "non-intersect dictionary: %d model: %d total: %d",
-        len(dictionary_non_intersect),
-        len(model_dose_indices),
-        len(result),
+    print(
+        f"non-intersect dictionary: {len(dictionary_non_intersect)} model: {len(model_dose_indices)} total: {len(result)}",
     )
     return result
 
